@@ -1,0 +1,241 @@
+/* ===================================================================
+   SAHAYAK DESIGN TOKENS
+   Palette: rooted in tools, trust, and Indian craft warmth.
+   - Deep teal: trust, the "verified pro" color
+   - Marigold: warmth, energy, the accent of the working day
+   - Paper: warm off-white, not stark white
+   - Ink: charcoal, not pure black
+   - Sage tint: quiet card surface
+   =================================================================== */
+
+:root {
+  --teal-900: #0a3e37;
+  --teal-700: #0f5d52;
+  --teal-600: #15715f;
+  --teal-100: #e4ede7;
+
+  --marigold-600: #e8a33d;
+  --marigold-700: #c97f1f;
+  --marigold-100: #fbe9cf;
+
+  --paper: #fbf7f0;
+  --paper-dim: #f3ede2;
+  --ink-900: #1f2622;
+  --ink-700: #3a423d;
+  --ink-500: #6b7570;
+  --ink-300: #a8b0ab;
+
+  --line: #ddd5c4;
+  --white: #ffffff;
+
+  --danger: #b3493b;
+  --success: #2e7d52;
+
+  --font-display: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+
+  --shadow-sm: 0 1px 2px rgba(31, 38, 34, 0.06);
+  --shadow-md: 0 6px 20px rgba(31, 38, 34, 0.08);
+  --shadow-lg: 0 16px 40px rgba(31, 38, 34, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink-900);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: var(--font-body);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--teal-700);
+  font-weight: 500;
+}
+
+.eyebrow.on-dark {
+  color: var(--marigold-600);
+}
+
+/* ---------- Buttons ---------- */
+.btn-sahayak {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.7rem 1.4rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-sahayak:active {
+  transform: translateY(1px);
+}
+
+.btn-sahayak-primary {
+  background: var(--marigold-600);
+  color: var(--ink-900);
+}
+.btn-sahayak-primary:hover {
+  background: var(--marigold-700);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-sahayak-teal {
+  background: var(--teal-700);
+  color: var(--white);
+}
+.btn-sahayak-teal:hover {
+  background: var(--teal-900);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-sahayak-outline {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink-900);
+}
+.btn-sahayak-outline:hover {
+  border-color: var(--teal-700);
+  color: var(--teal-700);
+}
+
+.btn-sahayak-outline-light {
+  background: transparent;
+  border-color: rgba(255,255,255,0.4);
+  color: var(--white);
+}
+.btn-sahayak-outline-light:hover {
+  border-color: var(--white);
+  background: rgba(255,255,255,0.08);
+}
+
+.btn-sahayak-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--teal-700);
+  padding: 0.55rem 0.9rem;
+}
+.btn-sahayak-ghost:hover {
+  background: var(--teal-100);
+}
+
+.btn-sahayak.btn-sm {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.btn-sahayak.btn-block {
+  width: 100%;
+}
+
+.btn-sahayak:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- Focus visibility ---------- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.card-focusable:focus-visible {
+  outline: 2.5px solid var(--teal-600);
+  outline-offset: 2px;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Shared surfaces ---------- */
+.surface-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.section-pad {
+  padding: 5rem 0;
+}
+
+@media (max-width: 768px) {
+  .section-pad {
+    padding: 3rem 0;
+  }
+}
+
+.container-sahayak {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.text-ink-500 { color: var(--ink-500); }
+.text-ink-700 { color: var(--ink-700); }
+.text-teal { color: var(--teal-700); }
+.text-marigold { color: var(--marigold-700); }
+
+.divider-line {
+  height: 1px;
+  background: var(--line);
+  border: none;
+  margin: 0;
+}
+
+/* scrollbar tidy */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--paper-dim); }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; }

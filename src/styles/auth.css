@@ -1,0 +1,230 @@
+.auth-page {
+  min-height: calc(100vh - 72px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.auth-side {
+  background: var(--teal-900);
+  color: var(--white);
+  padding: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(232, 163, 61, 0.14), transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(232, 163, 61, 0.1), transparent 45%);
+}
+
+.auth-side h2 {
+  color: var(--white);
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  line-height: 1.2;
+  max-width: 380px;
+}
+
+.auth-side-points {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-top: 2.5rem;
+}
+.auth-side-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.82);
+}
+.auth-side-point svg {
+  color: var(--marigold-600);
+  flex: none;
+  margin-top: 2px;
+}
+
+.auth-side-quote {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-md);
+  padding: 1.2rem 1.4rem;
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.8);
+  line-height: 1.6;
+}
+
+.auth-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+}
+
+.auth-form-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.auth-form-card .eyebrow {
+  margin-bottom: 0.6rem;
+  display: block;
+}
+
+.auth-form-card h1 {
+  font-size: 1.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.auth-form-card .auth-sub {
+  color: var(--ink-500);
+  font-size: 0.92rem;
+  margin-bottom: 2rem;
+}
+
+.auth-role-toggle {
+  display: flex;
+  background: var(--paper-dim);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem;
+  margin-bottom: 1.8rem;
+  gap: 0.3rem;
+}
+.auth-role-toggle a {
+  flex: 1;
+  text-align: center;
+  padding: 0.55rem 0.5rem;
+  border-radius: 5px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink-500);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.auth-role-toggle a.active {
+  background: var(--white);
+  color: var(--teal-700);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-field-group {
+  margin-bottom: 1.3rem;
+}
+.form-field-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+  color: var(--ink-700);
+}
+
+.form-field-group .field-hint {
+  font-size: 0.76rem;
+  color: var(--ink-500);
+  margin-top: 0.35rem;
+}
+
+.input-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.9rem;
+  background: var(--white);
+  transition: border-color 0.15s ease;
+}
+.input-with-icon:focus-within {
+  border-color: var(--teal-600);
+}
+.input-with-icon svg {
+  color: var(--ink-300);
+  flex: none;
+}
+.input-with-icon input,
+.input-with-icon select,
+.input-with-icon textarea {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 0.94rem;
+  background: transparent;
+  color: var(--ink-900);
+  font-family: var(--font-body);
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-check-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -0.4rem 0 1.4rem;
+  font-size: 0.86rem;
+}
+.form-check-row label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ink-700);
+  cursor: pointer;
+}
+.form-check-row a {
+  color: var(--teal-700);
+  font-weight: 600;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 1.6rem 0;
+  font-size: 0.78rem;
+  color: var(--ink-500);
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.auth-footer-link {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--ink-500);
+  margin-top: 1.6rem;
+}
+.auth-footer-link a {
+  color: var(--teal-700);
+  font-weight: 600;
+}
+
+.auth-alert {
+  background: var(--teal-100);
+  color: var(--teal-900);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.85rem;
+  margin-bottom: 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+  .auth-side {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-row-2 { grid-template-columns: 1fr; }
+}

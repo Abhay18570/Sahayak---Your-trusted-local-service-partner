@@ -12,6 +12,7 @@ import {
 } from "../api/bookingApi";
 import { createReview } from "../api/reviewApi";
 import { createPayment, getCustomerPayments } from "../api/paymentApi";
+import { getCustomerProfile, updateCustomerProfile } from "../api/customerApi";
 import {
   normalizeBooking,
   normalizeCategory,
@@ -23,6 +24,7 @@ const TABS = [
   { id: "search", label: "Search services", icon: "search" },
   { id: "recommended", label: "Recommended for you", icon: "star" },
   { id: "history", label: "Booking history", icon: "history" },
+  { id: "profile", label: "Profile", icon: "user" },
 ];
 
 export default function CustomerDashboard() {
@@ -30,7 +32,10 @@ export default function CustomerDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("search");
   const [query, setQuery] = useState(location.state?.service || "");
-  const [locality, setLocality] = useState(location.state?.locality || "");
+  const [city, setCity] = useState(location.state?.city || user?.city || "");
+  const [locality, setLocality] = useState(
+    location.state?.locality || user?.locality || ""
+  );
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [minRating, setMinRating] = useState(0);
   const [maxPrice, setMaxPrice] = useState(600);
@@ -48,6 +53,7 @@ export default function CustomerDashboard() {
   const [confirmingBooking, setConfirmingBooking] = useState(false);
 
   const customerId = user?.customerId ?? user?.id ?? user?.userId;
+  const profileUserId = user?.userId ?? user?.id ?? user?.customerId;
 
   const loadBookings = async () => {
     if (!customerId) return;
@@ -68,8 +74,20 @@ export default function CustomerDashboard() {
 
   useEffect(() => {
     let active = true;
+    const savedCity = user?.city || "";
+    const savedLocality = user?.locality || "";
 
-    Promise.all([getCategories(), getProviders()])
+    if (savedCity) {
+      setCity((current) => current || savedCity);
+      setLocality((current) => current || savedLocality);
+    }
+
+    Promise.all([
+      getCategories(),
+      savedCity
+        ? getProviders({ city: savedCity, locality: savedLocality })
+        : Promise.resolve([]),
+    ])
       .then(([categoryResponse, providerResponse]) => {
         if (!active) return;
         setCategories(unwrapList(categoryResponse).map(normalizeCategory));
@@ -81,7 +99,7 @@ export default function CustomerDashboard() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.city, user?.locality]);
 
   useEffect(() => {
     Promise.all([loadBookings(), loadPayments()])
@@ -188,11 +206,21 @@ export default function CustomerDashboard() {
   };
 
   const handleProviderSearch = async () => {
+    if (!city.trim()) {
+      setNotice({
+        type: "error",
+        text: "Please add your city in profile to see nearby providers.",
+      });
+      return;
+    }
+
     setLoading(true);
     setNotice(null);
     try {
       const response = await getProviders({
         query,
+        city: city.trim(),
+        locality: locality.trim(),
         category: selectedCategories[0],
         maxPrice,
         sort: sortBy,
@@ -318,6 +346,15 @@ export default function CustomerDashboard() {
 
         {activeTab === "search" && (
           <>
+            {!city.trim() && (
+              <div
+                className="auth-alert"
+                style={{ background: "#fff3d6", color: "#76510b" }}
+              >
+                <ToolIcon name="pin" size={15} />
+                Please add your city in profile to see nearby providers.
+              </div>
+            )}
             <div className="dashboard-search-bar">
               <label className="input-with-icon" style={{ border: "1.5px solid var(--line)" }}>
                 <ToolIcon name="search" size={18} />
@@ -326,6 +363,15 @@ export default function CustomerDashboard() {
                   placeholder="Search by service, name or skill"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                />
+              </label>
+              <label className="input-with-icon" style={{ border: "1.5px solid var(--line)" }}>
+                <ToolIcon name="pin" size={18} />
+                <input
+                  type="text"
+                  placeholder="City"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
                 />
               </label>
               <label className="input-with-icon" style={{ border: "1.5px solid var(--line)" }}>
@@ -556,9 +602,273 @@ export default function CustomerDashboard() {
             )}
           </div>
         )}
+
+        {activeTab === "profile" && <CustomerProfile userId={profileUserId} />}
       </div>
     </div>
   );
+}
+
+function CustomerProfile({ userId }) {
+  const { user, updateCurrentUser } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    city: user?.city || "",
+    locality: user?.locality || "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!userId) {
+      setMessage({ type: "error", text: "Your customer account ID is missing." });
+      setLoading(false);
+      return undefined;
+    }
+
+    setLoading(true);
+    getCustomerProfile(userId)
+      .then((response) => {
+        if (!active) return;
+        const loadedProfile = unwrapProfile(response);
+        const normalizedProfile = {
+          ...loadedProfile,
+          name: loadedProfile.name ?? user?.name ?? "",
+          email: loadedProfile.email ?? user?.email ?? "",
+          phone: loadedProfile.phone ?? user?.phone ?? "",
+          city: loadedProfile.city ?? user?.city ?? "",
+          locality: loadedProfile.locality ?? user?.locality ?? "",
+          role: loadedProfile.role ?? user?.role ?? "CUSTOMER",
+        };
+        setProfile(normalizedProfile);
+        setForm({
+          name: normalizedProfile.name,
+          phone: normalizedProfile.phone,
+          city: normalizedProfile.city,
+          locality: normalizedProfile.locality,
+        });
+      })
+      .catch((err) => {
+        if (active) {
+          setMessage({
+            type: "error",
+            text: err.message || "Unable to load your profile.",
+          });
+        }
+      })
+      .finally(() => active && setLoading(false));
+
+    return () => {
+      active = false;
+    };
+  }, [
+    userId,
+    user?.city,
+    user?.email,
+    user?.locality,
+    user?.name,
+    user?.phone,
+    user?.role,
+  ]);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!form.name.trim() || !form.phone.trim()) {
+      setMessage({ type: "error", text: "Name and phone are required." });
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const response = await updateCustomerProfile(userId, {
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+      });
+      const updatedProfile = unwrapProfile(response);
+      const nextProfile = {
+        ...profile,
+        ...updatedProfile,
+        name: updatedProfile.name ?? form.name.trim(),
+        phone: updatedProfile.phone ?? form.phone.trim(),
+        city: form.city.trim(),
+        locality: form.locality.trim(),
+      };
+
+      setProfile(nextProfile);
+      setForm({
+        name: nextProfile.name,
+        phone: nextProfile.phone,
+        city: nextProfile.city,
+        locality: nextProfile.locality,
+      });
+      updateCurrentUser({
+        name: nextProfile.name,
+        phone: nextProfile.phone,
+        city: nextProfile.city,
+        locality: nextProfile.locality,
+      });
+      setMessage({ type: "success", text: "Profile updated successfully." });
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text: err.message || "Unable to update your profile.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="empty-state surface-card">
+        <h5>Loading your profile...</h5>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="customer-profile-card surface-card">
+        {message && <ProfileMessage message={message} />}
+      </div>
+    );
+  }
+
+  return (
+    <section className="customer-profile-section">
+      <div className="section-head">
+        <div>
+          <span className="eyebrow">Your account</span>
+          <h2>Customer profile</h2>
+          <p>Keep your contact details current for bookings and service updates.</p>
+        </div>
+      </div>
+
+      <form className="customer-profile-card surface-card" onSubmit={handleSubmit}>
+        {message && <ProfileMessage message={message} />}
+
+        <div className="customer-profile-grid">
+          <div className="form-field-group">
+            <label htmlFor="customer-profile-name">Name</label>
+            <div className="input-with-icon">
+              <ToolIcon name="user" size={17} />
+              <input
+                id="customer-profile-name"
+                type="text"
+                value={form.name}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="form-field-group">
+            <label htmlFor="customer-profile-phone">Phone</label>
+            <div className="input-with-icon">
+              <ToolIcon name="phone" size={17} />
+              <input
+                id="customer-profile-phone"
+                type="tel"
+                value={form.phone}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, phone: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="form-field-group">
+            <label htmlFor="customer-profile-email">Email</label>
+            <div className="input-with-icon customer-profile-readonly">
+              <ToolIcon name="mail" size={17} />
+              <input id="customer-profile-email" type="email" value={profile.email} readOnly />
+            </div>
+          </div>
+
+          <div className="form-field-group">
+            <label htmlFor="customer-profile-city">City</label>
+            <div className="input-with-icon">
+              <ToolIcon name="pin" size={17} />
+              <input
+                id="customer-profile-city"
+                type="text"
+                value={form.city}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, city: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="form-field-group">
+            <label htmlFor="customer-profile-locality">Locality</label>
+            <div className="input-with-icon">
+              <ToolIcon name="pin" size={17} />
+              <input
+                id="customer-profile-locality"
+                type="text"
+                value={form.locality}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, locality: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="form-field-group">
+            <label htmlFor="customer-profile-role">Role</label>
+            <div className="input-with-icon customer-profile-readonly">
+              <ToolIcon name="shield" size={17} />
+              <input
+                id="customer-profile-role"
+                type="text"
+                value={formatStatus(profile.role)}
+                readOnly
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="customer-profile-actions">
+          <button
+            type="submit"
+            className="btn-sahayak btn-sahayak-teal"
+            disabled={saving}
+          >
+            {saving ? "Saving..." : "Save changes"}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function ProfileMessage({ message }) {
+  return (
+    <div
+      className="auth-alert"
+      style={{
+        background: message.type === "error" ? "#fbe7e3" : "#e3f3e8",
+        color: message.type === "error" ? "#7a2f24" : "#25613c",
+      }}
+    >
+      <ToolIcon name={message.type === "error" ? "shield" : "check"} size={15} />
+      {message.text}
+    </div>
+  );
+}
+
+function unwrapProfile(response) {
+  const profile = response?.profile || response?.data?.profile || response?.data || response;
+  return profile && typeof profile === "object" ? profile : {};
 }
 
 function ProviderRow({ provider: p, onBook }) {

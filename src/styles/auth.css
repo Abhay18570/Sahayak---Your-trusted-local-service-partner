@@ -66,6 +66,10 @@
   max-width: 420px;
 }
 
+.provider-registration-card {
+  max-width: 620px;
+}
+
 .auth-form-card .eyebrow {
   margin-bottom: 0.6rem;
   display: block;
@@ -216,6 +220,97 @@
   gap: 0.5rem;
 }
 
+.provider-availability,
+.provider-service-area-fields {
+  border: 0;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.provider-availability legend,
+.provider-service-area-fields legend {
+  color: var(--ink-700);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+
+.provider-availability > .field-hint,
+.provider-service-area-fields > .field-hint {
+  color: var(--ink-500);
+  font-size: 0.78rem;
+  margin: 0 0 0.8rem;
+}
+
+.provider-availability-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.provider-availability-row {
+  align-items: center;
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(110px, 1fr) 2fr;
+  padding: 0.75rem 0.85rem;
+}
+
+.provider-availability-row.selected {
+  background: var(--white);
+  border-color: var(--teal-600);
+}
+
+.provider-day-check {
+  align-items: center;
+  color: var(--ink-700);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.provider-time-fields {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.provider-time-fields label {
+  align-items: center;
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  margin: 0;
+}
+
+.provider-time-fields span {
+  color: var(--ink-500);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.provider-time-fields input {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  min-width: 0;
+  padding: 0.45rem 0.5rem;
+  width: 100%;
+}
+
+.provider-time-fields input:disabled {
+  background: var(--paper-dim);
+  color: var(--ink-300);
+}
+
 @media (max-width: 900px) {
   .auth-page {
     grid-template-columns: 1fr;
@@ -227,4 +322,13 @@
 
 @media (max-width: 480px) {
   .form-row-2 { grid-template-columns: 1fr; }
+
+  .provider-availability-row {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .provider-time-fields label {
+    grid-template-columns: 1fr;
+  }
 }

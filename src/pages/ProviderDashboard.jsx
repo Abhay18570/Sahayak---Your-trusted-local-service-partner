@@ -5,12 +5,24 @@ import { useAuth } from "../context/AuthContext";
 import { getProviderBookings, updateBookingStatus } from "../api/bookingApi";
 import { normalizeBooking, unwrapList } from "../api/normalizers";
 import { getUser } from "../api/userApi";
+import {
+  addProviderServiceArea,
+  deleteProviderServiceArea,
+  getProviderEarnings,
+  getProviderServiceAreas,
+} from "../api/providerApi";
 
 export default function ProviderDashboard() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [earnings, setEarnings] = useState(null);
+  const [earningsLoading, setEarningsLoading] = useState(true);
+  const [earningsError, setEarningsError] = useState("");
+  const [serviceAreas, setServiceAreas] = useState([]);
+  const [serviceAreasLoading, setServiceAreasLoading] = useState(true);
+  const [serviceAreasError, setServiceAreasError] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
   const [customerNames, setCustomerNames] = useState({});
   const providerId = user?.providerId ?? user?.id ?? user?.userId;
@@ -33,6 +45,46 @@ export default function ProviderDashboard() {
       .finally(() => setLoading(false));
     // providerId changes only when the authenticated account changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerId]);
+
+  const loadServiceAreas = async () => {
+    if (!providerId) {
+      setServiceAreasError("Your provider account ID is missing.");
+      setServiceAreasLoading(false);
+      return;
+    }
+
+    const response = await getProviderServiceAreas(providerId);
+    setServiceAreas(unwrapList(response));
+  };
+
+  useEffect(() => {
+    setServiceAreasLoading(true);
+    setServiceAreasError("");
+    loadServiceAreas()
+      .catch((err) =>
+        setServiceAreasError(err.message || "Unable to load your service areas.")
+      )
+      .finally(() => setServiceAreasLoading(false));
+    // providerId changes only when the authenticated account changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerId]);
+
+  useEffect(() => {
+    if (!providerId) {
+      setEarningsError("Your provider account ID is missing.");
+      setEarningsLoading(false);
+      return;
+    }
+
+    setEarningsLoading(true);
+    setEarningsError("");
+    getProviderEarnings(providerId)
+      .then((response) => setEarnings(response?.data || response))
+      .catch((err) =>
+        setEarningsError(err.message || "Unable to load your earnings summary.")
+      )
+      .finally(() => setEarningsLoading(false));
   }, [providerId]);
 
   useEffect(() => {
@@ -97,6 +149,21 @@ export default function ProviderDashboard() {
           <p>Your provider dashboard — manage job requests, your profile and earnings.</p>
         </div>
 
+        <EarningsSummary
+          earnings={earnings}
+          loading={earningsLoading}
+          error={earningsError}
+        />
+
+        <ServiceAreasSection
+          providerId={providerId}
+          serviceAreas={serviceAreas}
+          loading={serviceAreasLoading}
+          error={serviceAreasError}
+          onRefresh={loadServiceAreas}
+          onError={setServiceAreasError}
+        />
+
         {error && (
           <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
             {error}
@@ -134,6 +201,219 @@ export default function ProviderDashboard() {
         )}
       </div>
     </div>
+  );
+}
+
+function ServiceAreasSection({
+  providerId,
+  serviceAreas,
+  loading,
+  error,
+  onRefresh,
+  onError,
+}) {
+  const [form, setForm] = useState({ locality: "", city: "", state: "" });
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [message, setMessage] = useState("");
+
+  const handleAdd = async (event) => {
+    event.preventDefault();
+    if (!form.locality.trim() || !form.city.trim() || !form.state.trim()) {
+      onError("Enter locality, city and state.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    onError("");
+    try {
+      await addProviderServiceArea(providerId, {
+        locality: form.locality.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+      });
+      await onRefresh();
+      setForm({ locality: "", city: "", state: "" });
+      setMessage("Service area added.");
+    } catch (err) {
+      onError(err.message || "Unable to add service area.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (serviceAreaId) => {
+    setDeletingId(serviceAreaId);
+    setMessage("");
+    onError("");
+    try {
+      await deleteProviderServiceArea(serviceAreaId);
+      await onRefresh();
+      setMessage("Service area removed.");
+    } catch (err) {
+      onError(err.message || "Unable to delete service area.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <section className="provider-service-areas-section">
+      <div className="provider-section-heading">
+        <span className="eyebrow">Coverage</span>
+        <h2>Service areas</h2>
+      </div>
+
+      {error && (
+        <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
+          {error}
+        </div>
+      )}
+      {message && (
+        <div className="auth-alert" style={{ background: "#e3f3e8", color: "#25613c" }}>
+          {message}
+        </div>
+      )}
+
+      <div className="provider-service-areas-layout">
+        <form className="surface-card provider-service-area-form" onSubmit={handleAdd}>
+          <h3>Add service area</h3>
+          <div className="form-field-group">
+            <label htmlFor="service-area-locality">Locality</label>
+            <div className="input-with-icon">
+              <ToolIcon name="pin" size={17} />
+              <input
+                id="service-area-locality"
+                type="text"
+                value={form.locality}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, locality: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+          <div className="form-row-2">
+            <div className="form-field-group">
+              <label htmlFor="service-area-city">City</label>
+              <div className="input-with-icon">
+                <ToolIcon name="pin" size={17} />
+                <input
+                  id="service-area-city"
+                  type="text"
+                  value={form.city}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, city: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label htmlFor="service-area-state">State</label>
+              <div className="input-with-icon">
+                <ToolIcon name="pin" size={17} />
+                <input
+                  id="service-area-state"
+                  type="text"
+                  value={form.state}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, state: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="btn-sahayak btn-sahayak-teal btn-sm"
+            disabled={saving || !providerId}
+          >
+            {saving ? "Adding..." : "Add service area"}
+          </button>
+        </form>
+
+        <div className="provider-service-area-list">
+          {loading ? (
+            <div className="surface-card provider-earnings-loading">
+              Loading service areas...
+            </div>
+          ) : serviceAreas.length === 0 ? (
+            <div className="surface-card empty-state">
+              <ToolIcon name="pin" size={30} />
+              <h5>No service areas added</h5>
+            </div>
+          ) : (
+            serviceAreas.map((area) => {
+              const areaId = area.id ?? area.serviceAreaId;
+              return (
+                <article className="surface-card provider-service-area-card" key={areaId}>
+                  <div>
+                    <strong>{area.locality}</strong>
+                    <span>{[area.city, area.state].filter(Boolean).join(", ")}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-sahayak btn-sahayak-outline btn-sm"
+                    disabled={deletingId === areaId}
+                    onClick={() => handleDelete(areaId)}
+                  >
+                    {deletingId === areaId ? "Deleting..." : "Delete"}
+                  </button>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function EarningsSummary({ earnings, loading, error }) {
+  const cards = [
+    ["Total Earnings", formatCurrency(earnings?.totalEarnings), "star"],
+    ["Monthly Earnings", formatCurrency(earnings?.monthlyEarnings), "calendar"],
+    ["Completed Jobs", earnings?.completedJobs ?? 0, "check"],
+    ["Total Payments", earnings?.totalPayments ?? 0, "wrench"],
+  ];
+
+  return (
+    <section className="provider-earnings-section" aria-labelledby="provider-earnings-title">
+      <div className="provider-section-heading">
+        <span className="eyebrow">Earnings</span>
+        <h2 id="provider-earnings-title">Your earnings overview</h2>
+      </div>
+
+      {error && (
+        <div
+          className="auth-alert"
+          role="alert"
+          style={{ background: "#fbe7e3", color: "#7a2f24" }}
+        >
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="provider-earnings-loading surface-card" aria-live="polite">
+          Loading earnings...
+        </div>
+      ) : !error ? (
+        <div className="provider-earnings-grid">
+          {cards.map(([title, value, icon]) => (
+            <article className="admin-metric-card" key={title}>
+              <span className="admin-metric-icon">
+                <ToolIcon name={icon} size={22} />
+              </span>
+              <div>
+                <strong>{value}</strong>
+                <span>{title}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -188,4 +468,9 @@ function formatDateTime(value) {
 function formatStatus(status) {
   const value = String(status || "").toLowerCase();
   return value ? value[0].toUpperCase() + value.slice(1) : "Unknown";
+}
+
+function formatCurrency(value) {
+  const amount = Number(value ?? 0);
+  return `₹${Number.isFinite(amount) ? amount.toLocaleString("en-IN") : "0"}`;
 }

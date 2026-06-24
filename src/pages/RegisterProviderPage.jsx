@@ -1,46 +1,188 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
 import { useAuth } from "../context/AuthContext";
 import { getCategories } from "../api/categoryApi";
-import { normalizeCategory, unwrapList } from "../api/normalizers";
+import { unwrapList } from "../api/normalizers";
+import {
+  addProviderServiceArea,
+  saveProviderAvailability,
+} from "../api/providerApi";
+
+const WORKING_DAYS = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+];
+
+const INITIAL_AVAILABILITY = Object.fromEntries(
+  WORKING_DAYS.map((day) => [day, { selected: false, startTime: "", endTime: "" }])
+);
 
 export default function RegisterProviderPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
-    category: "",
-    experience: "",
-    locality: "",
-    idProof: "",
     password: "",
+    experienceYears: "",
+    bio: "",
+    categoryId: "",
+    price: "",
+    locality: "",
+    city: "",
+    state: "",
   });
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [availability, setAvailability] = useState(INITIAL_AVAILABILITY);
   const { registerProvider } = useAuth();
-  const navigate = useNavigate();
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+  const updateAvailability = (day, field, value) => {
+    setAvailability((current) => ({
+      ...current,
+      [day]: {
+        ...current[day],
+        [field]: value,
+        ...(field === "selected" && !value ? { startTime: "", endTime: "" } : {}),
+      },
+    }));
+  };
 
   useEffect(() => {
     getCategories()
-      .then((response) => setCategories(unwrapList(response).map(normalizeCategory)))
+      .then((response) => setCategories(unwrapList(response)))
       .catch((err) => setError(err.message || "Unable to load service categories."));
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.category || !form.password) {
-      setError("Fill in your name, email, service category and password to continue.");
+    if (!form.name || !form.email || !form.phone || !form.password) {
+      setError("Fill in your name, email, phone number and password to continue.");
       return;
     }
+    if (!form.categoryId) {
+      setError("Select a service category to continue.");
+      return;
+    }
+    if (form.price === "") {
+      setError("Enter your service price to continue.");
+      return;
+    }
+    if (form.experienceYears === "") {
+      setError("Enter your years of experience to continue.");
+      return;
+    }
+    if (!form.locality.trim() || !form.city.trim() || !form.state.trim()) {
+      setError("Enter your locality, city and state to continue.");
+      return;
+    }
+
+    const selectedAvailability = WORKING_DAYS
+      .filter((day) => availability[day].selected)
+      .map((day) => ({ day, ...availability[day] }));
+
+    if (selectedAvailability.length === 0) {
+      setError("Select at least one working day to continue.");
+      return;
+    }
+
+    const incompleteDay = selectedAvailability.find(
+      ({ startTime, endTime }) => !startTime || !endTime
+    );
+    if (incompleteDay) {
+      setError(`Enter both start and end time for ${formatDay(incompleteDay.day)}.`);
+      return;
+    }
+
+    const invalidTimeDay = selectedAvailability.find(
+      ({ startTime, endTime }) => endTime <= startTime
+    );
+    if (invalidTimeDay) {
+      setError(`End time must be after start time for ${formatDay(invalidTimeDay.day)}.`);
+      return;
+    }
+
     setError("");
+    setNotice(null);
     setSubmitting(true);
     try {
-      await registerProvider(form);
-      navigate("/provider-dashboard");
+      const registeredUser = await registerProvider({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        experienceYears: Number(form.experienceYears),
+        bio: form.bio,
+        categoryId: Number(form.categoryId),
+        price: Number(form.price),
+        priceUnit: "VISIT",
+      });
+
+      setRegistrationComplete(true);
+      const providerId =
+        registeredUser?.providerId ?? registeredUser?.userId ?? registeredUser?.id;
+
+      try {
+        if (providerId === undefined || providerId === null) {
+          throw new Error("Provider ID was not returned after registration.");
+        }
+
+        const availabilityResult = await Promise.allSettled(
+          selectedAvailability.map(({ day, startTime, endTime }) =>
+            saveProviderAvailability(providerId, {
+              dayOfWeek: day,
+              startTime: `${startTime}:00`,
+              endTime: `${endTime}:00`,
+              available: true,
+            })
+          )
+        );
+        const serviceAreaResult = await Promise.allSettled([
+          addProviderServiceArea(providerId, {
+            locality: form.locality.trim(),
+            city: form.city.trim(),
+            state: form.state.trim(),
+          }),
+        ]);
+
+        const availabilityFailed = availabilityResult.some(
+          (result) => result.status === "rejected"
+        );
+        const serviceAreaFailed = serviceAreaResult.some(
+          (result) => result.status === "rejected"
+        );
+
+        if (availabilityFailed || serviceAreaFailed) {
+          setNotice({
+            type: "warning",
+            text:
+              availabilityFailed && serviceAreaFailed
+                ? "Registration submitted, but availability and service area could not be saved. You can update them later."
+                : availabilityFailed
+                  ? "Registration submitted, but availability could not be saved. You can update it later."
+                  : "Registration submitted, but service area could not be saved. You can update it later.",
+          });
+        } else {
+          setNotice({
+            type: "success",
+            text: "Registration submitted. Waiting for admin approval.",
+          });
+        }
+      } catch {
+        setNotice({
+          type: "warning",
+          text: "Registration submitted, but availability could not be saved. You can update it later.",
+        });
+      }
     } catch (err) {
       setError(err.message || "Unable to submit your provider application.");
     } finally {
@@ -75,7 +217,7 @@ export default function RegisterProviderPage() {
       </aside>
 
       <div className="auth-main">
-        <div className="auth-form-card">
+        <div className="auth-form-card provider-registration-card">
           <span className="eyebrow">Provider sign-up</span>
           <h1>Register as a service provider</h1>
           <p className="auth-sub">Already on Sahayak? <Link to="/login">Log in instead</Link>.</p>
@@ -83,6 +225,20 @@ export default function RegisterProviderPage() {
           {error && (
             <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
               <ToolIcon name="shield" size={15} /> {error}
+            </div>
+          )}
+
+          {notice && (
+            <div
+              className="auth-alert"
+              style={
+                notice.type === "warning"
+                  ? { background: "#fff3d6", color: "#76510b" }
+                  : { background: "#e3f3e8", color: "#25613c" }
+              }
+            >
+              <ToolIcon name={notice.type === "warning" ? "calendar" : "check"} size={15} />
+              {notice.text}
             </div>
           )}
 
@@ -135,11 +291,16 @@ export default function RegisterProviderPage() {
                 <label htmlFor="prov-category">Primary service</label>
                 <div className="input-with-icon">
                   <ToolIcon name="filter" size={17} />
-                  <select id="prov-category" value={form.category} onChange={update("category")}>
+                  <select
+                    id="prov-category"
+                    value={form.categoryId}
+                    onChange={update("categoryId")}
+                    required
+                  >
                     <option value="">Select a category</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.label}>
-                        {c.label}
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.label || category.name}
                       </option>
                     ))}
                   </select>
@@ -154,41 +315,162 @@ export default function RegisterProviderPage() {
                     type="number"
                     min="0"
                     placeholder="e.g. 5"
-                    value={form.experience}
-                    onChange={update("experience")}
+                    value={form.experienceYears}
+                    onChange={update("experienceYears")}
+                    required
                   />
                 </div>
               </div>
             </div>
 
-            <div className="form-field-group">
-              <label htmlFor="prov-locality">Service area / Locality</label>
-              <div className="input-with-icon">
-                <ToolIcon name="pin" size={17} />
-                <input
-                  id="prov-locality"
-                  type="text"
-                  placeholder="Thane West, Maharashtra"
-                  value={form.locality}
-                  onChange={update("locality")}
-                />
+            <div className="form-row-2">
+              <div className="form-field-group">
+                <label htmlFor="prov-price">Price per visit</label>
+                <div className="input-with-icon">
+                  <ToolIcon name="star" size={17} />
+                  <input
+                    id="prov-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 500"
+                    value={form.price}
+                    onChange={update("price")}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="form-field-group">
+                <label htmlFor="prov-price-unit">Price unit</label>
+                <div className="input-with-icon">
+                  <ToolIcon name="calendar" size={17} />
+                  <input id="prov-price-unit" type="text" value="Per visit" disabled />
+                </div>
               </div>
             </div>
 
             <div className="form-field-group">
-              <label htmlFor="prov-id">Government ID number (for verification)</label>
+              <label htmlFor="prov-bio">Professional bio</label>
               <div className="input-with-icon">
-                <ToolIcon name="shield" size={17} />
-                <input
-                  id="prov-id"
-                  type="text"
-                  placeholder="Aadhaar / PAN number"
-                  value={form.idProof}
-                  onChange={update("idProof")}
+                <ToolIcon name="user" size={17} />
+                <textarea
+                  id="prov-bio"
+                  rows="4"
+                  placeholder="Tell customers about your experience and services."
+                  value={form.bio}
+                  onChange={update("bio")}
                 />
               </div>
-              <p className="field-hint">Used only to verify your identity. Never shown to customers.</p>
             </div>
+
+            <fieldset className="provider-service-area-fields">
+              <legend>Primary service area</legend>
+              <p className="field-hint">
+                Customers use this location to find providers near them.
+              </p>
+              <div className="form-row-2">
+                <div className="form-field-group">
+                  <label htmlFor="prov-locality">Locality</label>
+                  <div className="input-with-icon">
+                    <ToolIcon name="pin" size={17} />
+                    <input
+                      id="prov-locality"
+                      type="text"
+                      placeholder="Thane West"
+                      value={form.locality}
+                      onChange={update("locality")}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="form-field-group">
+                  <label htmlFor="prov-city">City</label>
+                  <div className="input-with-icon">
+                    <ToolIcon name="pin" size={17} />
+                    <input
+                      id="prov-city"
+                      type="text"
+                      placeholder="Thane"
+                      value={form.city}
+                      onChange={update("city")}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="form-field-group">
+                <label htmlFor="prov-state">State</label>
+                <div className="input-with-icon">
+                  <ToolIcon name="pin" size={17} />
+                  <input
+                    id="prov-state"
+                    type="text"
+                    placeholder="Maharashtra"
+                    value={form.state}
+                    onChange={update("state")}
+                    required
+                  />
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset className="provider-availability">
+              <legend>Working days and availability</legend>
+              <p className="field-hint">
+                Select at least one day and add the hours when customers can book you.
+              </p>
+
+              <div className="provider-availability-list">
+                {WORKING_DAYS.map((day) => {
+                  const dayAvailability = availability[day];
+
+                  return (
+                    <div
+                      className={`provider-availability-row ${
+                        dayAvailability.selected ? "selected" : ""
+                      }`}
+                      key={day}
+                    >
+                      <label className="provider-day-check">
+                        <input
+                          type="checkbox"
+                          checked={dayAvailability.selected}
+                          onChange={(event) =>
+                            updateAvailability(day, "selected", event.target.checked)
+                          }
+                        />
+                        <span>{formatDay(day)}</span>
+                      </label>
+
+                      <div className="provider-time-fields">
+                        <label>
+                          <span>Start</span>
+                          <input
+                            type="time"
+                            value={dayAvailability.startTime}
+                            disabled={!dayAvailability.selected}
+                            onChange={(event) =>
+                              updateAvailability(day, "startTime", event.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>End</span>
+                          <input
+                            type="time"
+                            value={dayAvailability.endTime}
+                            disabled={!dayAvailability.selected}
+                            onChange={(event) =>
+                              updateAvailability(day, "endTime", event.target.value)
+                            }
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </fieldset>
 
             <div className="form-field-group">
               <label htmlFor="prov-password">Create a password</label>
@@ -213,9 +495,13 @@ export default function RegisterProviderPage() {
             <button
               type="submit"
               className="btn-sahayak btn-sahayak-primary btn-block"
-              disabled={submitting}
+              disabled={submitting || registrationComplete}
             >
-              {submitting ? "Submitting..." : "Submit application"}
+              {submitting
+                ? "Submitting..."
+                : registrationComplete
+                  ? "Registration submitted"
+                  : "Submit application"}
             </button>
           </form>
 
@@ -227,4 +513,8 @@ export default function RegisterProviderPage() {
       </div>
     </div>
   );
+}
+
+function formatDay(day) {
+  return day[0] + day.slice(1).toLowerCase();
 }

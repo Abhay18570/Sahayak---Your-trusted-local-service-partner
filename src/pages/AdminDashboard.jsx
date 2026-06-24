@@ -1,17 +1,26 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ToolIcon from "../components/ToolIcon";
 import {
+  approveProvider,
   getAdminBookings,
+  getPendingProviders,
   getAdminProviders,
   getAdminReviews,
   getAdminStats,
   getAdminUsers,
+  rejectProvider,
 } from "../api/adminApi";
 import { normalizeBooking, normalizeProvider, unwrapList } from "../api/normalizers";
 import { normalizeRole } from "../utils/roles";
 import { getAdminPayments } from "../api/paymentApi";
 
-const TABS = ["users", "bookings", "reviews", "payments"];
+const TABS = [
+  { id: "users", label: "Users" },
+  { id: "bookings", label: "Bookings" },
+  { id: "reviews", label: "Reviews" },
+  { id: "payments", label: "Payments" },
+  { id: "pending-providers", label: "Pending Providers" },
+];
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("users");
@@ -19,10 +28,12 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [providers, setProviders] = useState([]);
+  const [pendingProviders, setPendingProviders] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [providerAction, setProviderAction] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -30,6 +41,7 @@ export default function AdminDashboard() {
       getAdminUsers(),
       getAdminBookings(),
       getAdminProviders(),
+      getPendingProviders(),
       getAdminReviews(),
       getAdminPayments(),
     ])
@@ -38,6 +50,7 @@ export default function AdminDashboard() {
         usersResponse,
         bookingsResponse,
         providersResponse,
+        pendingProvidersResponse,
         reviewsResponse,
         paymentsResponse,
       ]) => {
@@ -45,12 +58,37 @@ export default function AdminDashboard() {
         setUsers(unwrapList(usersResponse));
         setBookings(unwrapList(bookingsResponse).map(normalizeBooking));
         setProviders(unwrapList(providersResponse).map(normalizeProvider));
+        setPendingProviders(unwrapList(pendingProvidersResponse).map(normalizePendingProvider));
         setReviews(unwrapList(reviewsResponse));
         setPayments(unwrapList(paymentsResponse));
       })
       .catch((err) => setError(err.message || "Unable to load admin dashboard."))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleProviderDecision = async (providerId, decision) => {
+    setProviderAction({ providerId, decision });
+    setError("");
+
+    try {
+      const updateProvider = decision === "approve" ? approveProvider : rejectProvider;
+      await updateProvider(providerId);
+
+      const [pendingResponse, statsResponse, providersResponse] = await Promise.all([
+        getPendingProviders(),
+        getAdminStats(),
+        getAdminProviders(),
+      ]);
+
+      setPendingProviders(unwrapList(pendingResponse).map(normalizePendingProvider));
+      setStats(statsResponse?.data || statsResponse || {});
+      setProviders(unwrapList(providersResponse).map(normalizeProvider));
+    } catch (err) {
+      setError(err.message || `Unable to ${decision} provider.`);
+    } finally {
+      setProviderAction(null);
+    }
+  };
 
   const userNames = useMemo(
     () => Object.fromEntries(users.map((user) => [user.id ?? user.userId, getName(user)])),
@@ -95,13 +133,13 @@ export default function AdminDashboard() {
         </div>
 
         <div className="dashboard-tabs">
-          {TABS.map((tab) => (
+          {TABS.map(({ id, label }) => (
             <button
-              key={tab}
-              className={`dashboard-tab ${activeTab === tab ? "active" : ""}`}
-              onClick={() => setActiveTab(tab)}
+              key={id}
+              className={`dashboard-tab ${activeTab === id ? "active" : ""}`}
+              onClick={() => setActiveTab(id)}
             >
-              {tab[0].toUpperCase() + tab.slice(1)}
+              {label}
             </button>
           ))}
         </div>
@@ -114,8 +152,14 @@ export default function AdminDashboard() {
           <BookingsTable bookings={bookings} userNames={userNames} providerNames={providerNames} />
         ) : activeTab === "reviews" ? (
           <ReviewsTable reviews={reviews} userNames={userNames} providerNames={providerNames} />
-        ) : (
+        ) : activeTab === "payments" ? (
           <PaymentsTable payments={payments} userNames={userNames} />
+        ) : (
+          <PendingProvidersTable
+            providers={pendingProviders}
+            providerAction={providerAction}
+            onDecision={handleProviderDecision}
+          />
         )}
       </div>
     </div>
@@ -199,6 +243,75 @@ function PaymentsTable({ payments, userNames }) {
   );
 }
 
+function PendingProvidersTable({ providers, providerAction, onDecision }) {
+  if (providers.length === 0) {
+    return (
+      <div className="empty-state surface-card">
+        <h5>No pending provider approvals.</h5>
+      </div>
+    );
+  }
+
+  return (
+    <Table
+      headers={[
+        "Provider ID",
+        "Name",
+        "Email",
+        "Phone",
+        "Experience years",
+        "Bio",
+        "Verification status",
+        "Actions",
+      ]}
+    >
+      {providers.map((provider) => {
+        const isCurrentProvider = providerAction?.providerId === provider.providerId;
+
+        return (
+          <tr key={provider.providerId}>
+            <td><strong>#{provider.providerId}</strong></td>
+            <td>{provider.name}</td>
+            <td>{provider.email || "—"}</td>
+            <td>{provider.phone || "—"}</td>
+            <td>{provider.experienceYears}</td>
+            <td className="admin-provider-bio">{provider.bio || "—"}</td>
+            <td>
+              <span className={`status-badge ${String(provider.verificationStatus).toLowerCase()}`}>
+                {formatValue(provider.verificationStatus)}
+              </span>
+            </td>
+            <td>
+              <div className="admin-provider-actions">
+                <button
+                  type="button"
+                  className="btn-sahayak btn-sahayak-teal btn-sm"
+                  disabled={Boolean(providerAction)}
+                  onClick={() => onDecision(provider.providerId, "approve")}
+                >
+                  {isCurrentProvider && providerAction.decision === "approve"
+                    ? "Approving..."
+                    : "Approve"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-sahayak btn-sahayak-reject btn-sm"
+                  disabled={Boolean(providerAction)}
+                  onClick={() => onDecision(provider.providerId, "reject")}
+                >
+                  {isCurrentProvider && providerAction.decision === "reject"
+                    ? "Rejecting..."
+                    : "Reject"}
+                </button>
+              </div>
+            </td>
+          </tr>
+        );
+      })}
+    </Table>
+  );
+}
+
 function Table({ headers, children }) {
   return (
     <div className="booking-table-wrap admin-table-wrap">
@@ -224,6 +337,28 @@ function countStatus(bookings, status) {
 
 function getName(user) {
   return user.name || [user.firstName, user.lastName].filter(Boolean).join(" ") || `User #${user.id ?? user.userId}`;
+}
+
+function normalizePendingProvider(provider) {
+  const user = provider.user || {};
+
+  return {
+    ...provider,
+    providerId: provider.providerId ?? provider.id ?? provider.userId ?? user.id,
+    name:
+      provider.name ||
+      user.name ||
+      [provider.firstName ?? user.firstName, provider.lastName ?? user.lastName]
+        .filter(Boolean)
+        .join(" ") ||
+      `Provider #${provider.providerId ?? provider.id ?? provider.userId ?? user.id}`,
+    email: provider.email ?? user.email,
+    phone: provider.phone ?? user.phone,
+    experienceYears: provider.experienceYears ?? provider.experience ?? 0,
+    bio: provider.bio ?? provider.description ?? "",
+    verificationStatus:
+      provider.verificationStatus ?? provider.status ?? (provider.verified ? "VERIFIED" : "PENDING"),
+  };
 }
 
 function formatDate(value) {

@@ -22,6 +22,14 @@ function readStoredUser() {
 
 function getReturnedUser(response, fallbackRole) {
   const user = response?.user || response?.data?.user || response?.data || response;
+
+  if (typeof user === "number" || typeof user === "string") {
+    return {
+      id: user,
+      role: normalizeRole(fallbackRole),
+    };
+  }
+
   return {
     ...user,
     role: normalizeRole(user.role || fallbackRole),
@@ -39,7 +47,8 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     const response = await authApi.login(credentials);
-    return storeUser(getReturnedUser(response, credentials.role || "customer"));
+    const authenticatedUser = getReturnedUser(response, credentials.role || "customer");
+    return storeUser(authenticatedUser);
   };
 
   const registerCustomer = async (customer) => {
@@ -52,6 +61,11 @@ export function AuthProvider({ children }) {
     return storeUser(getReturnedUser(response, "provider"));
   };
 
+  const updateCurrentUser = (updates) => {
+    if (!user) return null;
+    return storeUser({ ...user, ...updates });
+  };
+
   const logout = () => {
     localStorage.removeItem(USER_STORAGE_KEY);
     setUser(null);
@@ -59,7 +73,14 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, registerCustomer, registerProvider, logout }}
+      value={{
+        user,
+        login,
+        registerCustomer,
+        registerProvider,
+        updateCurrentUser,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

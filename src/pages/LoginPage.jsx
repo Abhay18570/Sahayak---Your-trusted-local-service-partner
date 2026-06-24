@@ -29,7 +29,7 @@ export default function LoginPage() {
       if (!dashboardPath) throw new Error("This account has an unsupported role.");
       navigate(dashboardPath, { replace: true });
     } catch (err) {
-      setError(err.message || "Unable to log in. Please check your details.");
+      setError(getLoginErrorMessage(err, role));
     } finally {
       setSubmitting(false);
     }
@@ -74,6 +74,7 @@ export default function LoginPage() {
               onClick={(e) => {
                 e.preventDefault();
                 setRole("customer");
+                setError("");
               }}
             >
               I'm a customer
@@ -84,6 +85,7 @@ export default function LoginPage() {
               onClick={(e) => {
                 e.preventDefault();
                 setRole("provider");
+                setError("");
               }}
             >
               I'm a provider
@@ -94,6 +96,7 @@ export default function LoginPage() {
               onClick={(e) => {
                 e.preventDefault();
                 setRole("admin");
+                setError("");
               }}
             >
               I'm an admin
@@ -179,4 +182,35 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+function getLoginErrorMessage(error, role) {
+  const backendMessage = [
+    error?.data?.message,
+    error?.data?.detail,
+    error?.data?.error,
+    error?.message,
+  ].find((message) => typeof message === "string" && message.trim());
+  const normalizedMessage = backendMessage?.trim().toLowerCase() || "";
+
+  if (role === "provider" && normalizedMessage.includes("internal server error")) {
+    return "Your approval is still pending. Please wait some time.";
+  }
+
+  if (
+    normalizedMessage.includes("provider") &&
+    normalizedMessage.includes("pending") &&
+    normalizedMessage.includes("approval")
+  ) {
+    return "Your provider registration is submitted. Please wait for admin approval.";
+  }
+
+  if (
+    normalizedMessage.includes("provider") &&
+    normalizedMessage.includes("rejected")
+  ) {
+    return "Your provider registration was rejected. Please contact admin.";
+  }
+
+  return backendMessage?.trim() || "Unable to log in. Please check your details.";
 }

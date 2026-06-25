@@ -414,6 +414,10 @@ textarea {
     flex-direction: column;
   }
 
+  .provider-kyc-summary {
+    align-items: flex-start;
+  }
+
   .provider-booking-actions .btn-sahayak {
     flex-basis: auto;
     width: 100%;

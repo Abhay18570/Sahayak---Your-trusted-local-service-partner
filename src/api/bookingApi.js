@@ -14,6 +14,15 @@ export const updateBookingStatus = (bookingId, status) =>
     method: "PATCH",
   });
 
+export const saveCompletionImage = (bookingId, imageUrl) =>
+  apiClient(`/api/provider/bookings/${bookingId}/completion-image`, {
+    method: "POST",
+    body: { imageUrl },
+  });
+
+export const getCompletionImages = (bookingId) =>
+  apiClient(`/api/provider/bookings/${bookingId}/completion-images`);
+
 export const cancelBooking = (bookingId) =>
   apiClient(`/api/customer/bookings/${bookingId}/cancel`, { method: "PATCH" });
 

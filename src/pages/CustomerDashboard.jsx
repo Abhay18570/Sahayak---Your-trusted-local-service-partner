@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
+import ProviderAvatar from "../components/ProviderAvatar";
 import { useAuth } from "../context/AuthContext";
 import { getCategories } from "../api/categoryApi";
-import { getProvider, getProviders } from "../api/providerApi";
+import { getProvider, getProviderAvailability, getProviders } from "../api/providerApi";
 import {
   cancelBooking,
   createBooking,
+  getCompletionImages,
   getCustomerBookings,
   hideBooking,
 } from "../api/bookingApi";
@@ -36,20 +38,22 @@ export default function CustomerDashboard() {
   const [locality, setLocality] = useState(
     location.state?.locality || user?.locality || ""
   );
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [minRating, setMinRating] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(600);
+  const [maxPrice, setMaxPrice] = useState("");
   const [sortBy, setSortBy] = useState("rating");
   const [categories, setCategories] = useState([]);
   const [providers, setProviders] = useState([]);
   const [bookingHistory, setBookingHistory] = useState([]);
   const [paymentsByBooking, setPaymentsByBooking] = useState({});
+  const [completionImagesByBooking, setCompletionImagesByBooking] = useState({});
   const [providerNames, setProviderNames] = useState({});
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(null);
   const [cancellingBookingId, setCancellingBookingId] = useState(null);
   const [hidingBookingId, setHidingBookingId] = useState(null);
   const [selectedProvider, setSelectedProvider] = useState(null);
+  const [bookingError, setBookingError] = useState("");
   const [confirmingBooking, setConfirmingBooking] = useState(false);
 
   const customerId = user?.customerId ?? user?.id ?? user?.userId;
@@ -138,6 +142,35 @@ export default function CustomerDashboard() {
     });
   }, [bookingHistory, providerNames]);
 
+  useEffect(() => {
+    const completedBookings = bookingHistory.filter(
+      (booking) =>
+        booking.status === "COMPLETED" &&
+        !Object.prototype.hasOwnProperty.call(
+          completionImagesByBooking,
+          booking.bookingId
+        )
+    );
+
+    if (completedBookings.length === 0) return;
+
+    Promise.all(
+      completedBookings.map(async (booking) => {
+        try {
+          const response = await getCompletionImages(booking.bookingId);
+          return [booking.bookingId, normalizeCompletionImages(response)];
+        } catch {
+          return [booking.bookingId, []];
+        }
+      })
+    ).then((entries) => {
+      setCompletionImagesByBooking((current) => ({
+        ...current,
+        ...Object.fromEntries(entries),
+      }));
+    });
+  }, [bookingHistory, completionImagesByBooking]);
+
   const handleBook = (provider) => {
     if (!customerId) {
       setNotice({ type: "error", text: "Your customer account ID is missing." });
@@ -145,13 +178,15 @@ export default function CustomerDashboard() {
     }
 
     setNotice(null);
+    setBookingError("");
     setSelectedProvider(provider);
   };
 
-  const handleConfirmBooking = async (paymentMethod) => {
+  const handleConfirmBooking = async (paymentMethod, scheduledAt) => {
     const provider = selectedProvider;
     if (!provider) return;
 
+    setBookingError("");
     setConfirmingBooking(true);
     let createdBooking;
     try {
@@ -161,12 +196,18 @@ export default function CustomerDashboard() {
         providerServiceId: provider.providerServiceId ?? provider.id,
         description: `${provider.category} service request`,
         serviceAddress: user?.locality || locality || provider.locality,
-        scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        scheduledAt,
         quotedAmount: provider.price,
       });
       createdBooking = response?.booking || response?.data?.booking || response?.data || response;
     } catch (err) {
-      setNotice({ type: "error", text: err.message || "Unable to create booking." });
+      setBookingError(
+        err.status === 409
+          ? "This provider is already booked for this time slot. Please choose another time."
+          : err.status === 400
+            ? "This provider is not available at the selected day or time. Please choose another slot."
+          : err.message || "Unable to create booking."
+      );
       setConfirmingBooking(false);
       return;
     }
@@ -194,6 +235,7 @@ export default function CustomerDashboard() {
       // The booking and payment results above remain valid even if refreshing fails.
     }
 
+    setBookingError("");
     setSelectedProvider(null);
     setConfirmingBooking(false);
     setActiveTab("history");
@@ -218,11 +260,11 @@ export default function CustomerDashboard() {
     setNotice(null);
     try {
       const response = await getProviders({
-        query,
+        query: query.trim(),
         city: city.trim(),
         locality: locality.trim(),
-        category: selectedCategories[0],
-        maxPrice,
+        category: selectedCategory,
+        maxPrice: maxPrice === "" ? undefined : Number(maxPrice),
         sort: sortBy,
       });
       setProviders(unwrapList(response).map(normalizeProvider));
@@ -263,27 +305,8 @@ export default function CustomerDashboard() {
     }
   };
 
-  const toggleCategory = (label) => {
-    setSelectedCategories((prev) =>
-      prev.includes(label) ? prev.filter((c) => c !== label) : [...prev, label]
-    );
-  };
-
   const filteredProviders = useMemo(() => {
-    let list = providers.filter((p) => {
-      const matchesQuery =
-        !query ||
-        p.category.toLowerCase().includes(query.toLowerCase()) ||
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.tags.some((t) => t.toLowerCase().includes(query.toLowerCase()));
-      const matchesLocality =
-        !locality || p.locality.toLowerCase().includes(locality.toLowerCase());
-      const matchesCategory =
-        selectedCategories.length === 0 || selectedCategories.includes(p.category);
-      const matchesRating = p.rating >= minRating;
-      const matchesPrice = p.price <= maxPrice;
-      return matchesQuery && matchesLocality && matchesCategory && matchesRating && matchesPrice;
-    });
+    let list = providers.filter((provider) => provider.rating >= minRating);
 
     if (sortBy === "rating") list = [...list].sort((a, b) => b.rating - a.rating);
     if (sortBy === "price-low") list = [...list].sort((a, b) => a.price - b.price);
@@ -291,14 +314,20 @@ export default function CustomerDashboard() {
     if (sortBy === "experience") list = [...list].sort((a, b) => b.experience - a.experience);
 
     return list;
-  }, [providers, query, locality, selectedCategories, minRating, maxPrice, sortBy]);
+  }, [providers, minRating, sortBy]);
 
   const recommended = providers.slice(0, 3);
 
   const clearFilters = () => {
-    setSelectedCategories([]);
+    setQuery("");
+    setCity("");
+    setLocality("");
+    setSelectedCategory("");
     setMinRating(0);
-    setMaxPrice(600);
+    setMaxPrice("");
+    setSortBy("rating");
+    setProviders([]);
+    setNotice(null);
   };
 
   return (
@@ -338,8 +367,15 @@ export default function CustomerDashboard() {
           <BookingConfirmationModal
             key={selectedProvider.id}
             provider={selectedProvider}
+            error={bookingError}
             submitting={confirmingBooking}
-            onClose={() => !confirmingBooking && setSelectedProvider(null)}
+            onSlotChange={() => setBookingError("")}
+            onClose={() => {
+              if (!confirmingBooking) {
+                setBookingError("");
+                setSelectedProvider(null);
+              }
+            }}
             onConfirm={handleConfirmBooking}
           />
         )}
@@ -405,12 +441,22 @@ export default function CustomerDashboard() {
                 <div className="filter-group">
                   <div className="filter-group-title">Category</div>
                   <div className="filter-chip-list">
+                    <label className="filter-checkbox">
+                      <input
+                        type="radio"
+                        name="provider-category"
+                        checked={selectedCategory === ""}
+                        onChange={() => setSelectedCategory("")}
+                      />
+                      All categories
+                    </label>
                     {categories.map((c) => (
                       <label className="filter-checkbox" key={c.id}>
                         <input
-                          type="checkbox"
-                          checked={selectedCategories.includes(c.label)}
-                          onChange={() => toggleCategory(c.label)}
+                          type="radio"
+                          name="provider-category"
+                          checked={selectedCategory === c.label}
+                          onChange={() => setSelectedCategory(c.label)}
                         />
                         {c.label}
                       </label>
@@ -434,20 +480,17 @@ export default function CustomerDashboard() {
 
                 <div className="filter-group">
                   <div className="filter-group-title">Max price per visit</div>
-                  <div className="price-slider-row">
-                    <span>₹0</span>
-                    <strong>₹{maxPrice}</strong>
-                    <span>₹600+</span>
+                  <div className="input-with-icon">
+                    <span aria-hidden="true">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="50"
+                      placeholder="No maximum"
+                      value={maxPrice}
+                      onChange={(e) => setMaxPrice(e.target.value)}
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min="100"
-                    max="600"
-                    step="10"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(Number(e.target.value))}
-                    style={{ width: "100%", accentColor: "var(--teal-700)" }}
-                  />
                 </div>
               </aside>
 
@@ -579,6 +622,11 @@ export default function CustomerDashboard() {
                           <tr>
                             <td colSpan="6">
                               <div className="booking-completed-actions">
+                                {completionImagesByBooking[b.bookingId]?.length > 0 && (
+                                  <CompletionProofGallery
+                                    images={completionImagesByBooking[b.bookingId]}
+                                  />
+                                )}
                                 <PaymentPanel
                                   booking={b}
                                   payment={paymentsByBooking[b.bookingId]}
@@ -874,7 +922,12 @@ function unwrapProfile(response) {
 function ProviderRow({ provider: p, onBook }) {
   return (
     <article className="dashboard-provider-card">
-      <div className="dp-avatar">{p.initials}</div>
+      <ProviderAvatar
+        className="dp-avatar"
+        imageUrl={p.profileImageUrl}
+        initials={p.initials}
+        alt={`${p.name} profile`}
+      />
       <div>
         <div className="dp-name-row">
           <strong>{p.name}</strong>
@@ -914,7 +967,11 @@ function RecommendedCard({ provider: p, onBook }) {
   return (
     <article className="provider-card">
       <div className="provider-card-top">
-        <div className="provider-avatar">{p.initials}</div>
+        <ProviderAvatar
+          imageUrl={p.profileImageUrl}
+          initials={p.initials}
+          alt={`${p.name} profile`}
+        />
         <div>
           <div className="provider-name-row">
             <strong>{p.name}</strong>
@@ -943,8 +1000,52 @@ function RecommendedCard({ provider: p, onBook }) {
   );
 }
 
-function BookingConfirmationModal({ provider, submitting, onClose, onConfirm }) {
+function BookingConfirmationModal({
+  provider,
+  error,
+  submitting,
+  onClose,
+  onConfirm,
+  onSlotChange,
+}) {
   const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [bookingDate, setBookingDate] = useState(getTomorrowDate());
+  const [bookingTime, setBookingTime] = useState("09:00");
+  const [availability, setAvailability] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    const providerId = provider.providerId ?? provider.id;
+
+    if (providerId == null) return undefined;
+
+    getProviderAvailability(providerId)
+      .then((response) => {
+        if (active) setAvailability(normalizeAvailability(response));
+      })
+      .catch(() => {
+        if (active) setAvailability([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [provider.id, provider.providerId]);
+
+  const updateDate = (value) => {
+    setBookingDate(value);
+    onSlotChange();
+  };
+
+  const updateTime = (value) => {
+    setBookingTime(value);
+    onSlotChange();
+  };
+
+  const confirmBooking = () => {
+    if (!bookingDate || !bookingTime) return;
+    onConfirm(paymentMethod, `${bookingDate}T${bookingTime}:00`);
+  };
 
   return (
     <div className="booking-modal-backdrop" role="presentation" onMouseDown={onClose}>
@@ -959,7 +1060,11 @@ function BookingConfirmationModal({ provider, submitting, onClose, onConfirm }) 
         <h2 id="booking-modal-title">Review your booking</h2>
 
         <div className="booking-modal-provider">
-          <div className="provider-avatar">{provider.initials}</div>
+          <ProviderAvatar
+            imageUrl={provider.profileImageUrl}
+            initials={provider.initials}
+            alt={`${provider.name} profile`}
+          />
           <div>
             <strong>{provider.name}</strong>
             <span>{provider.category}</span>
@@ -968,6 +1073,64 @@ function BookingConfirmationModal({ provider, submitting, onClose, onConfirm }) 
             <strong>₹{provider.price}</strong>
             <span>/ {provider.priceUnit}</span>
           </div>
+        </div>
+
+        {error && (
+          <div
+            className="auth-alert"
+            role="alert"
+            style={{ background: "#fbe7e3", color: "#7a2f24" }}
+          >
+            <ToolIcon name="shield" size={15} />
+            {error}
+          </div>
+        )}
+
+        <div className="booking-slot-section">
+          <h6>Choose your service slot</h6>
+          <div className="booking-slot-fields">
+            <div className="form-field-group">
+              <label htmlFor="booking-date">Booking date</label>
+              <div className="input-with-icon">
+                <ToolIcon name="calendar" size={17} />
+                <input
+                  id="booking-date"
+                  type="date"
+                  min={getTodayDate()}
+                  value={bookingDate}
+                  onChange={(event) => updateDate(event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label htmlFor="booking-time">Booking time</label>
+              <div className="input-with-icon">
+                <ToolIcon name="history" size={17} />
+                <input
+                  id="booking-time"
+                  type="time"
+                  value={bookingTime}
+                  onChange={(event) => updateTime(event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+          </div>
+
+          {availability.length > 0 && (
+            <div className="booking-availability">
+              <ToolIcon name="calendar" size={16} />
+              <div>
+                <strong>Provider availability</strong>
+                {availability.map((slot) => (
+                  <span key={`${slot.day}-${slot.startTime}-${slot.endTime}`}>
+                    {formatAvailability(slot)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="booking-payment-choice">
@@ -1000,8 +1163,8 @@ function BookingConfirmationModal({ provider, submitting, onClose, onConfirm }) 
           <button
             type="button"
             className="btn-sahayak btn-sahayak-primary"
-            disabled={submitting}
-            onClick={() => onConfirm(paymentMethod)}
+            disabled={submitting || !bookingDate || !bookingTime}
+            onClick={confirmBooking}
           >
             {submitting ? "Confirming..." : "Confirm booking"}
           </button>
@@ -1009,6 +1172,81 @@ function BookingConfirmationModal({ provider, submitting, onClose, onConfirm }) 
       </section>
     </div>
   );
+}
+
+function getTodayDate() {
+  const today = new Date();
+  const offset = today.getTimezoneOffset() * 60 * 1000;
+  return new Date(today.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function getTomorrowDate() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const offset = tomorrow.getTimezoneOffset() * 60 * 1000;
+  return new Date(tomorrow.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function normalizeAvailability(response) {
+  const value = response?.availability ?? response?.data?.availability ?? response?.data ?? response;
+  const slots = Array.isArray(value) ? value : value ? [value] : [];
+
+  return slots
+    .map((slot) => ({
+      day: slot.day ?? slot.dayOfWeek ?? slot.weekDay,
+      startTime: slot.startTime ?? slot.fromTime ?? slot.start,
+      endTime: slot.endTime ?? slot.toTime ?? slot.end,
+    }))
+    .filter((slot) => slot.day && slot.startTime && slot.endTime);
+}
+
+function formatAvailability(slot) {
+  const day = String(slot.day)
+    .toLowerCase()
+    .replace(/^\w/, (letter) => letter.toUpperCase());
+  return `${day}, ${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`;
+}
+
+function formatTime(value) {
+  const [hours = "0", minutes = "00"] = String(value).split(":");
+  const hour = Number(hours);
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${String(displayHour).padStart(2, "0")}:${minutes} ${suffix}`;
+}
+
+function CompletionProofGallery({ images }) {
+  return (
+    <div className="completion-proof-gallery">
+      <strong>Work completion proof</strong>
+      <div>
+        {images.map((imageUrl, index) => (
+          <a href={imageUrl} target="_blank" rel="noreferrer" key={`${imageUrl}-${index}`}>
+            <img src={imageUrl} alt={`Work completion proof ${index + 1}`} />
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function normalizeCompletionImages(response) {
+  const value =
+    response?.completionImages ??
+    response?.images ??
+    response?.data?.completionImages ??
+    response?.data?.images ??
+    response?.data ??
+    response;
+  const images = Array.isArray(value) ? value : value ? [value] : [];
+
+  return images
+    .map((image) =>
+      typeof image === "string"
+        ? image
+        : image?.imageUrl ?? image?.url ?? image?.completionImageUrl
+    )
+    .filter(Boolean);
 }
 
 function ReviewForm({ bookingId }) {

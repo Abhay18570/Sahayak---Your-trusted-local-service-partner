@@ -149,7 +149,7 @@ export default function LoginPage() {
               <label>
                 <input type="checkbox" /> Keep me signed in
               </label>
-              <Link to="/">Forgot password?</Link>
+              <Link to="/forgot-password">Forgot password?</Link>
             </div>
 
             <button

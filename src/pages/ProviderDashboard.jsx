@@ -1,16 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
+import ProviderAvatar from "../components/ProviderAvatar";
 import { useAuth } from "../context/AuthContext";
-import { getProviderBookings, updateBookingStatus } from "../api/bookingApi";
-import { normalizeBooking, unwrapList } from "../api/normalizers";
+import {
+  getCompletionImages,
+  getProviderBookings,
+  saveCompletionImage,
+  updateBookingStatus,
+} from "../api/bookingApi";
+import { normalizeBooking, normalizeProvider, unwrapList } from "../api/normalizers";
 import { getUser } from "../api/userApi";
 import {
   addProviderServiceArea,
   deleteProviderServiceArea,
+  getProvider,
   getProviderEarnings,
   getProviderServiceAreas,
+  uploadProviderImage,
 } from "../api/providerApi";
+import { getMaskedAadhaar } from "../utils/providerKyc";
 
 export default function ProviderDashboard() {
   const { user } = useAuth();
@@ -23,9 +32,21 @@ export default function ProviderDashboard() {
   const [serviceAreas, setServiceAreas] = useState([]);
   const [serviceAreasLoading, setServiceAreasLoading] = useState(true);
   const [serviceAreasError, setServiceAreasError] = useState("");
+  const [providerProfile, setProviderProfile] = useState(() => normalizeProvider(user || {}));
   const [updatingId, setUpdatingId] = useState(null);
   const [customerNames, setCustomerNames] = useState({});
   const providerId = user?.providerId ?? user?.id ?? user?.userId;
+
+  useEffect(() => {
+    if (!providerId) return;
+
+    getProvider(providerId)
+      .then((response) => {
+        const profile = response?.provider || response?.data?.provider || response?.data || response;
+        setProviderProfile(normalizeProvider({ ...user, ...profile }));
+      })
+      .catch(() => setProviderProfile(normalizeProvider(user || {})));
+  }, [providerId, user]);
 
   const loadBookings = async () => {
     if (!providerId) {
@@ -135,7 +156,11 @@ export default function ProviderDashboard() {
         current.map((booking) => booking.bookingId === bookingId ? updated : booking)
       );
     } catch (err) {
-      setError(err.message || "Unable to update booking status.");
+      setError(
+        status === "COMPLETED" && err.status === 400
+          ? "Please upload completion image before marking job as completed."
+          : err.message || "Unable to update booking status."
+      );
     } finally {
       setUpdatingId(null);
     }
@@ -148,6 +173,8 @@ export default function ProviderDashboard() {
           <h1>Welcome{user?.name ? `, ${user.name}` : ""}</h1>
           <p>Your provider dashboard — manage job requests, your profile and earnings.</p>
         </div>
+
+        <ProviderKycSummary provider={providerProfile} />
 
         <EarningsSummary
           earnings={earnings}
@@ -201,6 +228,26 @@ export default function ProviderDashboard() {
         )}
       </div>
     </div>
+  );
+}
+
+function ProviderKycSummary({ provider }) {
+  const maskedAadhaar = getMaskedAadhaar(provider);
+
+  return (
+    <section className="surface-card provider-kyc-summary" aria-label="Provider profile">
+      <ProviderAvatar
+        className="dp-avatar"
+        imageUrl={provider.profileImageUrl}
+        initials={provider.initials}
+        alt={`${provider.name} profile`}
+      />
+      <div>
+        <strong>{provider.name}</strong>
+        <span>{provider.category}</span>
+        {maskedAadhaar && <span>Aadhaar: {maskedAadhaar}</span>}
+      </div>
+    </section>
   );
 }
 
@@ -418,10 +465,103 @@ function EarningsSummary({ earnings, loading, error }) {
 }
 
 function BookingRequestCard({ booking, customerName, updating, onStatusChange }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [completionImages, setCompletionImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [proofError, setProofError] = useState("");
+  const [proofMessage, setProofMessage] = useState("");
   const availableActions = {
     REQUESTED: ["ACCEPTED", "CANCELLED"],
-    ACCEPTED: ["COMPLETED", "CANCELLED"],
+    ACCEPTED: ["CANCELLED"],
   }[booking.status] || [];
+
+  useEffect(() => {
+    let active = true;
+    if (!["ACCEPTED", "COMPLETED"].includes(booking.status)) return undefined;
+
+    getCompletionImages(booking.bookingId)
+      .then((response) => {
+        if (active) setCompletionImages(normalizeCompletionImages(response));
+      })
+      .catch(() => {
+        if (active) setCompletionImages([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [booking.bookingId, booking.status]);
+
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl]
+  );
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setSelectedFile(null);
+      setPreviewUrl("");
+      return;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type) || !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+      event.target.value = "";
+      setSelectedFile(null);
+      setPreviewUrl("");
+      setProofError("Choose a JPG, JPEG, PNG or WEBP image.");
+      return;
+    }
+
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setProofError("");
+    setProofMessage("");
+  };
+
+  const handleUploadProof = async () => {
+    if (!selectedFile) {
+      setProofError("Please select a completion image to upload.");
+      return;
+    }
+
+    setUploading(true);
+    setProofError("");
+    setProofMessage("");
+    try {
+      const uploadResponse = await uploadProviderImage(selectedFile);
+      const imageUrl =
+        uploadResponse?.imageUrl ??
+        uploadResponse?.data?.imageUrl ??
+        uploadResponse?.url;
+
+      if (!imageUrl) throw new Error("No image URL was returned after upload.");
+
+      await saveCompletionImage(booking.bookingId, imageUrl);
+      setCompletionImages((current) => [...current, imageUrl]);
+      setSelectedFile(null);
+      setPreviewUrl("");
+      setProofMessage("Completion image uploaded successfully.");
+    } catch (err) {
+      setProofError(err.message || "Unable to upload completion image.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleComplete = () => {
+    if (completionImages.length === 0) {
+      setProofError("Please upload completion image before marking job as completed.");
+      return;
+    }
+
+    setProofError("");
+    onStatusChange(booking.bookingId, "COMPLETED");
+  };
 
   return (
     <article className="surface-card provider-booking-card" style={{ padding: "1.5rem" }}>
@@ -441,13 +581,62 @@ function BookingRequestCard({ booking, customerName, updating, onStatusChange })
       <p><strong>Address:</strong> {booking.serviceAddress || "Not provided"}</p>
       <p><strong>Scheduled:</strong> {formatDateTime(booking.scheduledAt)}</p>
       <p><strong>Quoted amount:</strong> ₹{booking.quotedAmount ?? 0}</p>
+      {booking.status === "ACCEPTED" && (
+        <div className="completion-proof-upload">
+          <h6>Upload completion image</h6>
+          <div className="input-with-icon">
+            <ToolIcon name="user" size={17} />
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              disabled={uploading || updating}
+            />
+          </div>
+          {previewUrl && (
+            <div className="completion-proof-card">
+              <img src={previewUrl} alt="Selected work completion preview" />
+              <span>{selectedFile?.name}</span>
+            </div>
+          )}
+          {proofError && (
+            <div className="auth-alert auth-alert-error" role="alert">{proofError}</div>
+          )}
+          {proofMessage && (
+            <div className="auth-alert auth-alert-success" role="status">{proofMessage}</div>
+          )}
+          <div className="provider-booking-actions">
+            <button
+              type="button"
+              className="btn-sahayak btn-sahayak-outline btn-sm"
+              disabled={uploading || updating || !selectedFile}
+              onClick={handleUploadProof}
+            >
+              {uploading ? "Uploading..." : "Upload proof"}
+            </button>
+            <button
+              type="button"
+              className="btn-sahayak btn-sahayak-teal btn-sm"
+              disabled={uploading || updating}
+              onClick={handleComplete}
+            >
+              {updating ? "Updating..." : "Complete"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {booking.status === "COMPLETED" && completionImages.length > 0 && (
+        <CompletionProofGallery images={completionImages} />
+      )}
+
       {availableActions.length > 0 && (
         <div className="provider-booking-actions">
           {availableActions.map((status) => (
             <button
               key={status}
               className={`btn-sahayak ${status === "CANCELLED" ? "btn-sahayak-outline" : "btn-sahayak-teal"} btn-sm`}
-              disabled={updating}
+              disabled={updating || uploading}
               onClick={() => onStatusChange(booking.bookingId, status)}
             >
               {updating ? "Updating..." : formatStatus(status)}
@@ -457,6 +646,40 @@ function BookingRequestCard({ booking, customerName, updating, onStatusChange })
       )}
     </article>
   );
+}
+
+function CompletionProofGallery({ images }) {
+  return (
+    <div className="completion-proof-gallery">
+      <strong>Work completion proof</strong>
+      <div>
+        {images.map((imageUrl, index) => (
+          <a href={imageUrl} target="_blank" rel="noreferrer" key={`${imageUrl}-${index}`}>
+            <img src={imageUrl} alt={`Work completion proof ${index + 1}`} />
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function normalizeCompletionImages(response) {
+  const value =
+    response?.completionImages ??
+    response?.images ??
+    response?.data?.completionImages ??
+    response?.data?.images ??
+    response?.data ??
+    response;
+  const images = Array.isArray(value) ? value : value ? [value] : [];
+
+  return images
+    .map((image) =>
+      typeof image === "string"
+        ? image
+        : image?.imageUrl ?? image?.url ?? image?.completionImageUrl
+    )
+    .filter(Boolean);
 }
 
 function formatDateTime(value) {

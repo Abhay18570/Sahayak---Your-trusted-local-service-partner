@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ToolIcon from "../components/ToolIcon";
+import ProviderAvatar from "../components/ProviderAvatar";
+import { useAuth } from "../context/AuthContext";
 import {
   approveProvider,
+  deleteUser,
   getAdminBookings,
   getPendingProviders,
   getAdminProviders,
@@ -13,6 +16,7 @@ import {
 import { normalizeBooking, normalizeProvider, unwrapList } from "../api/normalizers";
 import { normalizeRole } from "../utils/roles";
 import { getAdminPayments } from "../api/paymentApi";
+import { getMaskedAadhaar, getProviderImageUrl } from "../utils/providerKyc";
 
 const TABS = [
   { id: "users", label: "Users" },
@@ -23,6 +27,7 @@ const TABS = [
 ];
 
 export default function AdminDashboard() {
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState("users");
   const [stats, setStats] = useState({});
   const [users, setUsers] = useState([]);
@@ -33,7 +38,9 @@ export default function AdminDashboard() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [providerAction, setProviderAction] = useState(null);
+  const [deletingUserId, setDeletingUserId] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -69,6 +76,7 @@ export default function AdminDashboard() {
   const handleProviderDecision = async (providerId, decision) => {
     setProviderAction({ providerId, decision });
     setError("");
+    setMessage("");
 
     try {
       const updateProvider = decision === "approve" ? approveProvider : rejectProvider;
@@ -87,6 +95,36 @@ export default function AdminDashboard() {
       setError(err.message || `Unable to ${decision} provider.`);
     } finally {
       setProviderAction(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm("Are you sure you want to disable this user?")) return;
+
+    setDeletingUserId(userId);
+    setError("");
+    setMessage("");
+
+    try {
+      await deleteUser(userId);
+
+      const [usersResponse, providersResponse, pendingResponse, statsResponse] =
+        await Promise.all([
+          getAdminUsers(),
+          getAdminProviders(),
+          getPendingProviders(),
+          getAdminStats(),
+        ]);
+
+      setUsers(unwrapList(usersResponse));
+      setProviders(unwrapList(providersResponse).map(normalizeProvider));
+      setPendingProviders(unwrapList(pendingResponse).map(normalizePendingProvider));
+      setStats(statsResponse?.data || statsResponse || {});
+      setMessage("User disabled successfully");
+    } catch (err) {
+      setError(err.message || "Unable to disable user.");
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -122,6 +160,12 @@ export default function AdminDashboard() {
             {error}
           </div>
         )}
+        {message && (
+          <div className="auth-alert" style={{ background: "#e3f3e8", color: "#25613c" }}>
+            <ToolIcon name="check" size={15} />
+            {message}
+          </div>
+        )}
 
         <div className="admin-metric-grid">
           {metrics.map(([label, value, icon]) => (
@@ -147,7 +191,13 @@ export default function AdminDashboard() {
         {loading ? (
           <div className="empty-state surface-card"><h5>Loading admin data...</h5></div>
         ) : activeTab === "users" ? (
-          <UsersTable users={users} />
+          <UsersTable
+            users={users}
+            providers={providers}
+            currentUser={currentUser}
+            deletingUserId={deletingUserId}
+            onDeleteUser={handleDeleteUser}
+          />
         ) : activeTab === "bookings" ? (
           <BookingsTable bookings={bookings} userNames={userNames} providerNames={providerNames} />
         ) : activeTab === "reviews" ? (
@@ -166,19 +216,53 @@ export default function AdminDashboard() {
   );
 }
 
-function UsersTable({ users }) {
+function UsersTable({
+  users,
+  providers,
+  currentUser,
+  deletingUserId,
+  onDeleteUser,
+}) {
   return (
-    <Table headers={["User", "Email", "Phone", "Role", "Status", "Joined"]}>
-      {users.map((user) => (
-        <tr key={user.id ?? user.userId}>
-          <td><strong>{getName(user)}</strong></td>
+    <Table headers={["User", "Email", "Phone", "Role", "KYC", "Status", "Joined", "Actions"]}>
+      {users.map((user) => {
+        const userId = user.id ?? user.userId;
+        const disabled = user.enabled === false || user.active === false;
+        const isCurrentUser = isSameUser(user, currentUser);
+
+        return (
+        <tr key={userId}>
+          <td>
+            <AdminProviderIdentity
+              provider={getProviderForUser(user, providers)}
+              name={getName(user)}
+            />
+          </td>
           <td>{user.email || "—"}</td>
           <td>{user.phone || "—"}</td>
           <td>{formatValue(user.role)}</td>
-          <td>{user.enabled === false || user.active === false ? "Disabled" : "Active"}</td>
+          <td>{getMaskedAadhaar(getProviderForUser(user, providers)) || "—"}</td>
+          <td>
+            <span className={`status-badge ${disabled ? "disabled" : "active"}`}>
+              {disabled ? "Disabled" : "Active"}
+            </span>
+          </td>
           <td>{formatDate(user.createdAt)}</td>
+          <td>
+            {!disabled && !isCurrentUser && (
+              <button
+                type="button"
+                className="btn-sahayak btn-sahayak-reject btn-sm"
+                disabled={deletingUserId != null}
+                onClick={() => onDeleteUser(userId)}
+              >
+                {deletingUserId === userId ? "Disabling..." : "Disable"}
+              </button>
+            )}
+          </td>
         </tr>
-      ))}
+        );
+      })}
     </Table>
   );
 }
@@ -256,9 +340,10 @@ function PendingProvidersTable({ providers, providerAction, onDecision }) {
     <Table
       headers={[
         "Provider ID",
-        "Name",
+        "Provider",
         "Email",
         "Phone",
+        "Masked Aadhaar",
         "Experience years",
         "Bio",
         "Verification status",
@@ -271,9 +356,10 @@ function PendingProvidersTable({ providers, providerAction, onDecision }) {
         return (
           <tr key={provider.providerId}>
             <td><strong>#{provider.providerId}</strong></td>
-            <td>{provider.name}</td>
+            <td><AdminProviderIdentity provider={provider} name={provider.name} /></td>
             <td>{provider.email || "—"}</td>
             <td>{provider.phone || "—"}</td>
+            <td>{getMaskedAadhaar(provider) || "—"}</td>
             <td>{provider.experienceYears}</td>
             <td className="admin-provider-bio">{provider.bio || "—"}</td>
             <td>
@@ -354,11 +440,62 @@ function normalizePendingProvider(provider) {
       `Provider #${provider.providerId ?? provider.id ?? provider.userId ?? user.id}`,
     email: provider.email ?? user.email,
     phone: provider.phone ?? user.phone,
+    profileImageUrl: getProviderImageUrl(provider) || getProviderImageUrl(user),
+    aadhaarMasked: getMaskedAadhaar(provider) || getMaskedAadhaar(user),
     experienceYears: provider.experienceYears ?? provider.experience ?? 0,
     bio: provider.bio ?? provider.description ?? "",
     verificationStatus:
       provider.verificationStatus ?? provider.status ?? (provider.verified ? "VERIFIED" : "PENDING"),
   };
+}
+
+function AdminProviderIdentity({ provider, name }) {
+  return (
+    <div className="admin-provider-identity">
+      <ProviderAvatar
+        className="dp-avatar admin-provider-avatar"
+        imageUrl={getProviderImageUrl(provider)}
+        initials={getInitials(name)}
+        alt={`${name} profile`}
+      />
+      <strong>{name}</strong>
+    </div>
+  );
+}
+
+function getProviderForUser(user, providers) {
+  return providers.find((provider) => {
+    const userId = user.id ?? user.userId;
+    return (
+      provider.providerId === user.providerId ||
+      provider.userId === userId ||
+      provider.user?.id === userId ||
+      (provider.email && provider.email === user.email)
+    );
+  }) || user;
+}
+
+function isSameUser(user, currentUser) {
+  if (!currentUser) return false;
+
+  const userId = user.id ?? user.userId;
+  const currentUserId = currentUser.id ?? currentUser.userId;
+
+  if (userId != null && currentUserId != null) {
+    return String(userId) === String(currentUserId);
+  }
+
+  return Boolean(user.email && currentUser.email && user.email === currentUser.email);
+}
+
+function getInitials(name) {
+  return String(name || "Provider")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 function formatDate(value) {

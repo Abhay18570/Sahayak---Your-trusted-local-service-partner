@@ -7,6 +7,7 @@ import { unwrapList } from "../api/normalizers";
 import {
   addProviderServiceArea,
   saveProviderAvailability,
+  uploadProviderImage,
 } from "../api/providerApi";
 
 const WORKING_DAYS = [
@@ -31,6 +32,7 @@ export default function RegisterProviderPage() {
     password: "",
     experienceYears: "",
     bio: "",
+    aadhaarNumber: "",
     categoryId: "",
     price: "",
     locality: "",
@@ -43,9 +45,39 @@ export default function RegisterProviderPage() {
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [categories, setCategories] = useState([]);
   const [availability, setAvailability] = useState(INITIAL_AVAILABILITY);
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState("");
   const { registerProvider } = useAuth();
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+  const updateAadhaar = (event) => {
+    const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
+    const formatted = digits.match(/.{1,4}/g)?.join(" ") || "";
+    setForm({ ...form, aadhaarNumber: formatted });
+  };
+  const updateProfileImage = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      setProfileImageFile(null);
+      setProfileImagePreview("");
+      return;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedExtension = /\.(jpe?g|png|webp)$/i.test(file.name);
+    if (!allowedTypes.includes(file.type) || !allowedExtension) {
+      event.target.value = "";
+      setProfileImageFile(null);
+      setProfileImagePreview("");
+      setError("Choose a JPG, JPEG, PNG or WEBP image.");
+      return;
+    }
+
+    setError("");
+    setProfileImageFile(file);
+    setProfileImagePreview(URL.createObjectURL(file));
+  };
   const updateAvailability = (day, field, value) => {
     setAvailability((current) => ({
       ...current,
@@ -62,6 +94,13 @@ export default function RegisterProviderPage() {
       .then((response) => setCategories(unwrapList(response)))
       .catch((err) => setError(err.message || "Unable to load service categories."));
   }, []);
+
+  useEffect(
+    () => () => {
+      if (profileImagePreview) URL.revokeObjectURL(profileImagePreview);
+    },
+    [profileImagePreview]
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -83,6 +122,15 @@ export default function RegisterProviderPage() {
     }
     if (!form.locality.trim() || !form.city.trim() || !form.state.trim()) {
       setError("Enter your locality, city and state to continue.");
+      return;
+    }
+    if (!profileImageFile) {
+      setError("Select a provider profile image to continue.");
+      return;
+    }
+    const aadhaarNumber = form.aadhaarNumber.replace(/\s/g, "");
+    if (!/^\d{12}$/.test(aadhaarNumber)) {
+      setError("Enter a valid 12-digit Aadhaar number.");
       return;
     }
 
@@ -114,6 +162,28 @@ export default function RegisterProviderPage() {
     setError("");
     setNotice(null);
     setSubmitting(true);
+
+    let profileImageUrl;
+    try {
+      const uploadResponse = await uploadProviderImage(profileImageFile);
+      profileImageUrl =
+        uploadResponse?.imageUrl ??
+        uploadResponse?.data?.imageUrl ??
+        uploadResponse?.url;
+
+      if (!profileImageUrl) {
+        throw new Error("Image uploaded, but no image URL was returned.");
+      }
+    } catch (err) {
+      setError(
+        `Unable to upload provider image. ${
+          err.message || "Please check the file and try again."
+        }`
+      );
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const registeredUser = await registerProvider({
         name: form.name,
@@ -122,6 +192,8 @@ export default function RegisterProviderPage() {
         password: form.password,
         experienceYears: Number(form.experienceYears),
         bio: form.bio,
+        profileImageUrl,
+        aadhaarNumber,
         categoryId: Number(form.categoryId),
         price: Number(form.price),
         priceUnit: "VISIT",
@@ -285,6 +357,51 @@ export default function RegisterProviderPage() {
                 />
               </div>
             </div>
+
+            <fieldset className="provider-service-area-fields">
+              <legend>Identity and profile</legend>
+              <p className="field-hint">
+                Your Aadhaar is used for verification and will only be shown in masked form.
+              </p>
+              <div className="form-field-group">
+                <label htmlFor="prov-image">Provider profile image</label>
+                <div className="input-with-icon">
+                  <ToolIcon name="user" size={17} />
+                  <input
+                    id="prov-image"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    onChange={updateProfileImage}
+                    disabled={submitting || registrationComplete}
+                    required
+                  />
+                </div>
+                <p className="field-hint">JPG, JPEG, PNG or WEBP.</p>
+                {profileImagePreview && (
+                  <div className="provider-image-preview">
+                    <img src={profileImagePreview} alt="Selected provider profile preview" />
+                    <span>{profileImageFile?.name}</span>
+                  </div>
+                )}
+              </div>
+              <div className="form-field-group">
+                <label htmlFor="prov-aadhaar">Aadhaar number</label>
+                <div className="input-with-icon">
+                  <ToolIcon name="shield" size={17} />
+                  <input
+                    id="prov-aadhaar"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="1234 5678 9012"
+                    value={form.aadhaarNumber}
+                    onChange={updateAadhaar}
+                    maxLength={14}
+                    required
+                  />
+                </div>
+              </div>
+            </fieldset>
 
             <div className="form-row-2">
               <div className="form-field-group">

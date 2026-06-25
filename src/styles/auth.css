@@ -220,6 +220,75 @@
   gap: 0.5rem;
 }
 
+.auth-alert-error {
+  background: #fbe7e3;
+  color: #7a2f24;
+}
+
+.auth-alert-success {
+  background: #e3f3e8;
+  color: #25613c;
+}
+
+.auth-field-label-row {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.auth-text-button,
+.auth-input-action {
+  background: none;
+  border: 0;
+  color: var(--teal-700);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.auth-text-button {
+  font-size: 0.78rem;
+  margin-bottom: 0.45rem;
+  padding: 0;
+}
+
+.auth-input-action {
+  flex: none;
+  font-size: 0.78rem;
+  padding: 0;
+}
+
+.auth-text-button:disabled,
+.auth-input-action:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.provider-image-preview {
+  align-items: center;
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 0.75rem;
+  padding: 0.7rem;
+}
+
+.provider-image-preview img {
+  border-radius: 50%;
+  height: 64px;
+  object-fit: cover;
+  width: 64px;
+}
+
+.provider-image-preview span {
+  color: var(--ink-500);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
 .provider-availability,
 .provider-service-area-fields {
   border: 0;

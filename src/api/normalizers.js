@@ -1,3 +1,5 @@
+import { getMaskedAadhaar } from "../utils/providerKyc";
+
 export function unwrapList(response) {
   if (Array.isArray(response)) return response;
   if (Array.isArray(response?.content)) return response.content;
@@ -19,6 +21,16 @@ export function normalizeCategory(category) {
 }
 
 export function normalizeProvider(provider) {
+  const safeProvider = { ...provider };
+  delete safeProvider.aadhaarNumber;
+  if (safeProvider.user && typeof safeProvider.user === "object") {
+    safeProvider.user = { ...safeProvider.user };
+    delete safeProvider.user.aadhaarNumber;
+  }
+  if (safeProvider.providerProfile && typeof safeProvider.providerProfile === "object") {
+    safeProvider.providerProfile = { ...safeProvider.providerProfile };
+    delete safeProvider.providerProfile.aadhaarNumber;
+  }
   const service = provider.providerService ?? provider.providerServices?.[0] ?? provider.services?.[0];
   const name = provider.name ?? provider.user?.name ?? "Provider";
   const category =
@@ -30,13 +42,19 @@ export function normalizeProvider(provider) {
     "Service";
 
   return {
-    ...provider,
+    ...safeProvider,
     id: provider.id ?? provider.providerId ?? provider.userId,
     providerId: provider.providerId ?? provider.id ?? provider.userId,
     providerServiceId:
       provider.providerServiceId ?? provider.serviceId ?? service?.id,
     name,
     initials: provider.initials ?? name.split(" ").map((part) => part[0]).join("").slice(0, 2),
+    profileImageUrl:
+      provider.profileImageUrl ??
+      provider.user?.profileImageUrl ??
+      provider.providerProfile?.profileImageUrl ??
+      "",
+    aadhaarMasked: getMaskedAadhaar(provider),
     category,
     locality: provider.locality ?? provider.serviceArea ?? provider.user?.locality ?? "",
     rating: Number(provider.rating ?? provider.averageRating ?? 0),

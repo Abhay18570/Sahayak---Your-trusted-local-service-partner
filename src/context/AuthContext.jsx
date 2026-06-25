@@ -30,19 +30,34 @@ function getReturnedUser(response, fallbackRole) {
     };
   }
 
-  return {
+  return sanitizeUser({
     ...user,
     role: normalizeRole(user.role || fallbackRole),
-  };
+  });
+}
+
+function sanitizeUser(user) {
+  if (!user || typeof user !== "object") return user;
+
+  const sanitized = { ...user };
+  delete sanitized.aadhaarNumber;
+
+  if (sanitized.providerProfile && typeof sanitized.providerProfile === "object") {
+    sanitized.providerProfile = { ...sanitized.providerProfile };
+    delete sanitized.providerProfile.aadhaarNumber;
+  }
+
+  return sanitized;
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readStoredUser);
 
   const storeUser = (nextUser) => {
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
-    setUser(nextUser);
-    return nextUser;
+    const sanitizedUser = sanitizeUser(nextUser);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(sanitizedUser));
+    setUser(sanitizedUser);
+    return sanitizedUser;
   };
 
   const login = async (credentials) => {

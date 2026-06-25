@@ -207,6 +207,50 @@
   flex: none;
 }
 
+.provider-avatar-shell {
+  overflow: hidden;
+}
+
+.provider-avatar-shell img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.provider-kyc-summary {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: 1.1rem;
+}
+
+.provider-kyc-summary .dp-avatar {
+  height: 72px;
+  width: 72px;
+}
+
+.provider-kyc-summary span,
+.admin-provider-identity span {
+  color: var(--ink-500);
+  display: block;
+  font-size: 0.82rem;
+  margin-top: 0.2rem;
+}
+
+.admin-provider-identity {
+  align-items: center;
+  display: flex;
+  gap: 0.65rem;
+  min-width: 180px;
+}
+
+.admin-provider-avatar {
+  height: 40px;
+  width: 40px;
+}
+
 .dp-name-row {
   display: flex;
   align-items: center;
@@ -547,10 +591,84 @@
 .status-badge.paid,
 .status-badge.success { background: #e3f3e8; color: var(--success); }
 
+.status-badge.active {
+  background: #e3f3e8;
+  color: var(--success);
+}
+
+.status-badge.disabled {
+  background: #fbe7e3;
+  color: var(--danger);
+}
+
 .booking-completed-actions {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+.completion-proof-upload {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.completion-proof-upload h6 {
+  margin-bottom: 0.7rem;
+}
+
+.completion-proof-upload .auth-alert {
+  margin: 0.8rem 0 0;
+}
+
+.completion-proof-card {
+  align-items: center;
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+  padding: 0.7rem;
+}
+
+.completion-proof-card img {
+  border-radius: var(--radius-sm);
+  height: 84px;
+  object-fit: cover;
+  width: 110px;
+}
+
+.completion-proof-card span {
+  color: var(--ink-500);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.completion-proof-gallery {
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+}
+
+.completion-proof-gallery > strong {
+  display: block;
+  margin-bottom: 0.65rem;
+}
+
+.completion-proof-gallery > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.completion-proof-gallery img {
+  border-radius: var(--radius-sm);
+  display: block;
+  height: 110px;
+  object-fit: cover;
+  width: 145px;
 }
 
 .booking-payment-panel,
@@ -633,6 +751,50 @@
   font-size: 1.2rem;
 }
 
+.booking-slot-section {
+  margin-top: 1.4rem;
+}
+
+.booking-slot-section h6 {
+  margin-bottom: 0.7rem;
+}
+
+.booking-slot-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.booking-slot-fields .form-field-group {
+  margin-bottom: 0;
+}
+
+.booking-availability {
+  align-items: flex-start;
+  background: var(--teal-100);
+  border-radius: var(--radius-sm);
+  color: var(--teal-900);
+  display: flex;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.85rem;
+}
+
+.booking-availability svg {
+  flex: none;
+  margin-top: 0.15rem;
+}
+
+.booking-availability strong,
+.booking-availability span {
+  display: block;
+  font-size: 0.8rem;
+}
+
+.booking-availability span {
+  margin-top: 0.18rem;
+}
+
 .booking-payment-choice {
   margin-top: 1.4rem;
 }
@@ -687,4 +849,5 @@
   .customer-profile-actions .btn-sahayak { width: 100%; }
   .provider-service-area-card { align-items: stretch; flex-direction: column; }
   .provider-service-area-card .btn-sahayak { width: 100%; }
+  .booking-slot-fields { grid-template-columns: 1fr; }
 }

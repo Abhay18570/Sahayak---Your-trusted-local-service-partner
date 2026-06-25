@@ -23,7 +23,7 @@ export function buildQuery(params = {}) {
 }
 
 export async function apiClient(path, options = {}) {
-  const { body, headers, ...requestOptions } = options;
+  const { body, headers, responseType, ...requestOptions } = options;
   const response = await fetch(`${BASE_URL}${path}`, {
     credentials: "include",
     ...requestOptions,
@@ -36,9 +36,12 @@ export async function apiClient(path, options = {}) {
   });
 
   const contentType = response.headers.get("content-type") || "";
-  const data = contentType.includes("application/json")
-    ? await response.json()
-    : await response.text();
+  const data =
+    responseType === "text"
+      ? await response.text()
+      : contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
 
   if (!response.ok) {
     const message =

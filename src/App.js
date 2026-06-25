@@ -6,6 +6,7 @@ import Footer from "./components/Footer";
 
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import RegisterCustomerPage from "./pages/RegisterCustomerPage";
 import RegisterProviderPage from "./pages/RegisterProviderPage";
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -55,6 +56,7 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/register" element={<RegisterCustomerPage />} />
             <Route path="/register-provider" element={<RegisterProviderPage />} />
             <Route

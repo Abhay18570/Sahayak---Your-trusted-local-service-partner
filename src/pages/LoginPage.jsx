@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
 import { useAuth } from "../context/AuthContext";
@@ -11,7 +12,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { login } = useAuth();
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const { login, googleCustomerLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -32,6 +34,33 @@ export default function LoginPage() {
       setError(getLoginErrorMessage(err, role));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    if (role !== "customer") return;
+
+    const credential = credentialResponse?.credential;
+    if (!credential) {
+      setError("Google sign-in did not return the required credential. Please try again.");
+      return;
+    }
+
+    setError("");
+    setGoogleSubmitting(true);
+    try {
+      await googleCustomerLogin(credential);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(getGoogleLoginErrorMessage(err));
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    if (role === "customer") {
+      setError("Google sign-in could not be completed. Please try again.");
     }
   };
 
@@ -163,10 +192,23 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="auth-divider">or continue with</div>
-          <button className="btn-sahayak btn-sahayak-outline btn-block" type="button">
-            Continue with Google
-          </button>
+          {role === "customer" && (
+            <>
+              <div className="auth-divider">or continue with</div>
+              <div className="google-login-wrap" aria-busy={googleSubmitting}>
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  text="continue_with"
+                  shape="rectangular"
+                  size="large"
+                  width="380"
+                  useOneTap={false}
+                />
+                {googleSubmitting && <span>Signing in with Google...</span>}
+              </div>
+            </>
+          )}
 
           <p className="auth-footer-link">
             Don't have an account?{" "}
@@ -213,4 +255,15 @@ function getLoginErrorMessage(error, role) {
   }
 
   return backendMessage?.trim() || "Unable to log in. Please check your details.";
+}
+
+function getGoogleLoginErrorMessage(error) {
+  const backendMessage = [
+    error?.data?.message,
+    error?.data?.detail,
+    error?.data?.error,
+    error?.message,
+  ].find((message) => typeof message === "string" && message.trim());
+
+  return backendMessage?.trim() || "Unable to sign in with Google. Please try again.";
 }

@@ -66,6 +66,11 @@ export function AuthProvider({ children }) {
     return storeUser(authenticatedUser);
   };
 
+  const googleCustomerLogin = async (credential) => {
+    const response = await authApi.googleCustomerLogin(credential);
+    return storeUser(getReturnedUser(response, "customer"));
+  };
+
   const registerCustomer = async (customer) => {
     const response = await authApi.registerCustomer(customer);
     return storeUser(getReturnedUser(response, "customer"));
@@ -91,6 +96,7 @@ export function AuthProvider({ children }) {
       value={{
         user,
         login,
+        googleCustomerLogin,
         registerCustomer,
         registerProvider,
         updateCurrentUser,

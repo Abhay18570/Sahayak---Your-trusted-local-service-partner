@@ -197,6 +197,28 @@
   background: var(--line);
 }
 
+.google-login-wrap {
+  display: grid;
+  gap: 0.7rem;
+  justify-items: center;
+  width: 100%;
+}
+
+.google-login-wrap > div {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.google-login-wrap iframe {
+  max-width: 100%;
+}
+
+.google-login-wrap span {
+  color: var(--ink-500);
+  font-size: 0.82rem;
+}
+
 .auth-footer-link {
   text-align: center;
   font-size: 0.9rem;

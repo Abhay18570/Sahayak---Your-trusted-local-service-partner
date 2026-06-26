@@ -3,6 +3,12 @@ import { apiClient } from "./apiClient";
 export const login = (credentials) =>
   apiClient("/api/auth/login", { method: "POST", body: credentials });
 
+export const googleCustomerLogin = (credential) =>
+  apiClient("/api/auth/google/customer", {
+    method: "POST",
+    body: { credential },
+  });
+
 export const forgotPassword = (email) =>
   apiClient("/api/auth/forgot-password", {
     method: "POST",

@@ -7,11 +7,6 @@ const USER_STORAGE_KEY = "sahayak.user";
 
 function readStoredUser() {
   try {
-    if (process.env.NODE_ENV === "development") {
-      localStorage.removeItem(USER_STORAGE_KEY);
-      return null;
-    }
-
     const storedUser = JSON.parse(localStorage.getItem(USER_STORAGE_KEY));
     return storedUser ? { ...storedUser, role: normalizeRole(storedUser.role) } : null;
   } catch {
@@ -60,9 +55,13 @@ export function AuthProvider({ children }) {
     return sanitizedUser;
   };
 
-  const login = async (credentials) => {
-    const response = await authApi.login(credentials);
-    const authenticatedUser = getReturnedUser(response, credentials.role || "customer");
+  const login = async (credentialsOrUser) => {
+    if (credentialsOrUser?.id && credentialsOrUser?.role && !credentialsOrUser?.password) {
+      return storeUser(getReturnedUser(credentialsOrUser, credentialsOrUser.role));
+    }
+
+    const response = await authApi.login(credentialsOrUser);
+    const authenticatedUser = getReturnedUser(response, credentialsOrUser.role || "customer");
     return storeUser(authenticatedUser);
   };
 

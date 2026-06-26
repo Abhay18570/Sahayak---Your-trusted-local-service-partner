@@ -3,6 +3,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
 import { useAuth } from "../context/AuthContext";
+import { googleCustomerLogin } from "../api/authApi";
 import { dashboardPathForRole } from "../utils/roles";
 
 export default function LoginPage() {
@@ -13,7 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
-  const { login, googleCustomerLogin } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,8 +50,11 @@ export default function LoginPage() {
     setError("");
     setGoogleSubmitting(true);
     try {
-      await googleCustomerLogin(credential);
-      navigate("/dashboard", { replace: true });
+      const backendUser = await googleCustomerLogin(credential);
+      const loggedInUser = await login(backendUser);
+      const dashboardPath = dashboardPathForRole(loggedInUser.role);
+      if (!dashboardPath) throw new Error("This account has an unsupported role.");
+      navigate(dashboardPath, { replace: true });
     } catch (err) {
       setError(getGoogleLoginErrorMessage(err));
     } finally {

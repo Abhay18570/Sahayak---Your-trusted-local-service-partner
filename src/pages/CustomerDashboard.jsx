@@ -7,6 +7,7 @@ import { getCategories } from "../api/categoryApi";
 import { getProvider, getProviderAvailability, getProviders } from "../api/providerApi";
 import {
   cancelBooking,
+  confirmBookingCompletion,
   createBooking,
   getCompletionImages,
   getCustomerBookings,
@@ -14,6 +15,8 @@ import {
 } from "../api/bookingApi";
 import { createReview } from "../api/reviewApi";
 import { createPayment, getCustomerPayments } from "../api/paymentApi";
+import { downloadInvoicePdf, getInvoiceByBooking } from "../api/invoiceApi";
+import { createRazorpayOrder, verifyRazorpayPayment } from "../api/razorpayApi";
 import { getCustomerProfile, updateCustomerProfile } from "../api/customerApi";
 import {
   normalizeBooking,
@@ -46,11 +49,16 @@ export default function CustomerDashboard() {
   const [providers, setProviders] = useState([]);
   const [bookingHistory, setBookingHistory] = useState([]);
   const [paymentsByBooking, setPaymentsByBooking] = useState({});
+  const [invoicesByBooking, setInvoicesByBooking] = useState({});
+  const [invoiceErrorsByBooking, setInvoiceErrorsByBooking] = useState({});
+  const [loadingInvoiceId, setLoadingInvoiceId] = useState(null);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
   const [completionImagesByBooking, setCompletionImagesByBooking] = useState({});
   const [providerNames, setProviderNames] = useState({});
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(null);
   const [cancellingBookingId, setCancellingBookingId] = useState(null);
+  const [confirmingCompletionId, setConfirmingCompletionId] = useState(null);
   const [hidingBookingId, setHidingBookingId] = useState(null);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [bookingError, setBookingError] = useState("");
@@ -143,19 +151,19 @@ export default function CustomerDashboard() {
   }, [bookingHistory, providerNames]);
 
   useEffect(() => {
-    const completedBookings = bookingHistory.filter(
+    const proofReadyBookings = bookingHistory.filter(
       (booking) =>
-        booking.status === "COMPLETED" &&
+        ["WORK_DONE", "COMPLETED"].includes(booking.status) &&
         !Object.prototype.hasOwnProperty.call(
           completionImagesByBooking,
           booking.bookingId
         )
     );
 
-    if (completedBookings.length === 0) return;
+    if (proofReadyBookings.length === 0) return;
 
     Promise.all(
-      completedBookings.map(async (booking) => {
+      proofReadyBookings.map(async (booking) => {
         try {
           const response = await getCompletionImages(booking.bookingId);
           return [booking.bookingId, normalizeCompletionImages(response)];
@@ -302,6 +310,67 @@ export default function CustomerDashboard() {
       setNotice({ type: "error", text: err.message || "Unable to remove booking history." });
     } finally {
       setHidingBookingId(null);
+    }
+  };
+
+  const handleConfirmCompletion = async (bookingId) => {
+    setConfirmingCompletionId(bookingId);
+    setNotice(null);
+    try {
+      await confirmBookingCompletion(bookingId);
+      await Promise.all([loadBookings(), loadPayments()]);
+      setNotice({ type: "success", text: "Completion confirmed successfully." });
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || "Unable to confirm completion." });
+    } finally {
+      setConfirmingCompletionId(null);
+    }
+  };
+
+  const loadInvoiceForBooking = async (bookingId) => {
+    setLoadingInvoiceId(bookingId);
+    setInvoiceErrorsByBooking((current) => ({ ...current, [bookingId]: "" }));
+    try {
+      const response = await getInvoiceByBooking(bookingId);
+      const invoice = normalizeInvoice(response);
+      setInvoicesByBooking((current) => ({ ...current, [bookingId]: invoice }));
+      return invoice;
+    } catch (err) {
+      setInvoiceErrorsByBooking((current) => ({
+        ...current,
+        [bookingId]: err.message || "Unable to load invoice.",
+      }));
+      return null;
+    } finally {
+      setLoadingInvoiceId(null);
+    }
+  };
+
+  const handlePaymentCreated = async (bookingId, payment) => {
+    setPaymentsByBooking((current) => ({
+      ...current,
+      [bookingId]: payment,
+    }));
+    try {
+      await Promise.all([loadBookings(), loadPayments()]);
+    } catch {
+      // The verified payment result remains valid even if refreshing fails.
+    }
+    await loadInvoiceForBooking(bookingId);
+  };
+
+  const handleDownloadInvoice = async (bookingId) => {
+    setDownloadingInvoiceId(bookingId);
+    setInvoiceErrorsByBooking((current) => ({ ...current, [bookingId]: "" }));
+    try {
+      await downloadInvoicePdf(bookingId);
+    } catch (err) {
+      setInvoiceErrorsByBooking((current) => ({
+        ...current,
+        [bookingId]: err.message || "Unable to download invoice.",
+      }));
+    } finally {
+      setDownloadingInvoiceId(null);
     }
   };
 
@@ -592,6 +661,18 @@ export default function CustomerDashboard() {
                                 {b.status === "COMPLETED" && <ToolIcon name="check" size={12} />}
                                 {formatStatus(b.status)}
                               </span>
+                              {b.status === "WORK_DONE" && (
+                                <button
+                                  type="button"
+                                  className="btn-sahayak btn-sahayak-teal btn-sm"
+                                  disabled={confirmingCompletionId === b.bookingId}
+                                  onClick={() => handleConfirmCompletion(b.bookingId)}
+                                >
+                                  {confirmingCompletionId === b.bookingId
+                                    ? "Confirming..."
+                                    : "Confirm completion"}
+                                </button>
+                              )}
                               {(b.status === "REQUESTED" || b.status === "ACCEPTED") && (
                                 <button
                                   type="button"
@@ -618,7 +699,7 @@ export default function CustomerDashboard() {
                               : "—"}
                           </td>
                         </tr>
-                        {b.status === "COMPLETED" && (
+                        {["WORK_DONE", "COMPLETED"].includes(b.status) && (
                           <tr>
                             <td colSpan="6">
                               <div className="booking-completed-actions">
@@ -627,17 +708,23 @@ export default function CustomerDashboard() {
                                     images={completionImagesByBooking[b.bookingId]}
                                   />
                                 )}
-                                <PaymentPanel
-                                  booking={b}
-                                  payment={paymentsByBooking[b.bookingId]}
-                                  onPaymentCreated={(payment) =>
-                                    setPaymentsByBooking((current) => ({
-                                      ...current,
-                                      [b.bookingId]: payment,
-                                    }))
-                                  }
-                                />
-                                <ReviewForm bookingId={b.bookingId} />
+                                {b.status === "COMPLETED" && (
+                                  <>
+                                    <PaymentPanel
+                                      booking={b}
+                                      payment={paymentsByBooking[b.bookingId]}
+                                      invoice={invoicesByBooking[b.bookingId]}
+                                      invoiceError={invoiceErrorsByBooking[b.bookingId]}
+                                      invoiceLoading={loadingInvoiceId === b.bookingId}
+                                      invoiceDownloading={downloadingInvoiceId === b.bookingId}
+                                      customer={user}
+                                      onPaymentCreated={(payment) => handlePaymentCreated(b.bookingId, payment)}
+                                      onViewInvoice={() => loadInvoiceForBooking(b.bookingId)}
+                                      onDownloadInvoice={() => handleDownloadInvoice(b.bookingId)}
+                                    />
+                                    <ReviewForm bookingId={b.bookingId} />
+                                  </>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1249,6 +1336,21 @@ function normalizeCompletionImages(response) {
     .filter(Boolean);
 }
 
+function normalizeInvoice(response) {
+  const invoice = response?.invoice || response?.data?.invoice || response?.data || response || {};
+
+  return {
+    ...invoice,
+    invoiceNumber: invoice.invoiceNumber ?? invoice.number ?? invoice.invoiceNo ?? `#${invoice.id ?? ""}`,
+    bookingId: invoice.bookingId ?? invoice.booking?.id,
+    platformFee: Number(invoice.platformFee ?? 0),
+    cgst: Number(invoice.cgst ?? invoice.CGST ?? 0),
+    sgst: Number(invoice.sgst ?? invoice.SGST ?? 0),
+    providerEarning: Number(invoice.providerEarning ?? invoice.providerEarnings ?? 0),
+    totalPayable: Number(invoice.totalPayable ?? invoice.totalAmount ?? invoice.amount ?? 0),
+  };
+}
+
 function ReviewForm({ bookingId }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
@@ -1295,7 +1397,18 @@ function ReviewForm({ bookingId }) {
   );
 }
 
-function PaymentPanel({ booking, payment, onPaymentCreated }) {
+function PaymentPanel({
+  booking,
+  payment,
+  invoice,
+  invoiceError,
+  invoiceLoading,
+  invoiceDownloading,
+  customer,
+  onPaymentCreated,
+  onViewInvoice,
+  onDownloadInvoice,
+}) {
   const [paymentMethod, setPaymentMethod] = useState("UPI");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -1304,10 +1417,19 @@ function PaymentPanel({ booking, payment, onPaymentCreated }) {
     setSubmitting(true);
     setError("");
     try {
-      const response = await createPayment(booking.bookingId, paymentMethod);
-      onPaymentCreated(response?.payment || response?.data || response);
+      if (paymentMethod === "CASH") {
+        const response = await createPayment(booking.bookingId, paymentMethod);
+        await onPaymentCreated(response?.payment || response?.data || response);
+      } else {
+        const response = await payWithRazorpay({
+          bookingId: booking.bookingId,
+          paymentMethod,
+          customer,
+        });
+        await onPaymentCreated(response?.payment || response?.data?.payment || response?.data || response);
+      }
     } catch (err) {
-      setError(err.message || "Unable to process payment.");
+      setError(err.message || "Payment cancelled or failed");
     } finally {
       setSubmitting(false);
     }
@@ -1315,12 +1437,35 @@ function PaymentPanel({ booking, payment, onPaymentCreated }) {
 
   if (payment) {
     return (
-      <div className="booking-payment-status">
-        <strong>Payment: {formatStatus(payment.status || "PAID")}</strong>
-        <span>Method: {payment.paymentMethod || payment.method || "—"}</span>
-        <span>
-          Transaction: {payment.transactionReference || payment.transactionId || payment.reference || "—"}
-        </span>
+      <div className="booking-payment-status booking-invoice-status">
+        <div className="booking-payment-summary">
+          <strong>Payment: {formatStatus(payment.status || "PAID")}</strong>
+          <span>Method: {payment.paymentMethod || payment.method || "—"}</span>
+          <span>
+            Transaction: {payment.transactionReference || payment.transactionId || payment.reference || "—"}
+          </span>
+          <button
+            type="button"
+            className="btn-sahayak btn-sahayak-outline btn-sm"
+            disabled={invoiceLoading}
+            onClick={onViewInvoice}
+          >
+            {invoiceLoading ? "Loading invoice..." : "View invoice"}
+          </button>
+          {invoice && (
+            <button
+              type="button"
+              className="btn-sahayak btn-sahayak-teal btn-sm"
+              disabled={invoiceDownloading}
+              onClick={onDownloadInvoice}
+            >
+              {invoiceDownloading ? "Downloading..." : "Download PDF"}
+            </button>
+          )}
+        </div>
+        {invoice && <InvoiceDetails invoice={invoice} />}
+        {invoice && <span className="booking-invoice-email">Invoice sent to your email.</span>}
+        {invoiceError && <span style={{ color: "var(--danger)" }}>{invoiceError}</span>}
       </div>
     );
   }
@@ -1346,6 +1491,101 @@ function PaymentPanel({ booking, payment, onPaymentCreated }) {
   );
 }
 
+function loadRazorpayScript() {
+  if (window.Razorpay) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const existingScript = document.querySelector(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(true), { once: true });
+      existingScript.addEventListener("error", () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+async function payWithRazorpay({ bookingId, paymentMethod, customer }) {
+  const scriptLoaded = await loadRazorpayScript();
+  if (!scriptLoaded || !window.Razorpay) {
+    throw new Error("Payment cancelled or failed");
+  }
+
+  const orderResponse = await createRazorpayOrder(bookingId);
+  const order = orderResponse?.data || orderResponse;
+
+  return new Promise((resolve, reject) => {
+    const checkout = new window.Razorpay({
+      key: order.keyId,
+      amount: order.amount,
+      currency: order.currency || "INR",
+      order_id: order.orderId,
+      name: "Sahayak",
+      description: "Sahayak Service Payment",
+      prefill: {
+        name: customer?.name || "",
+        email: customer?.email || "",
+        contact: customer?.phone || customer?.mobile || "",
+      },
+      method: {
+        upi: paymentMethod === "UPI",
+        card: paymentMethod === "CARD",
+        netbanking: false,
+        wallet: false,
+      },
+      handler: async (response) => {
+        try {
+          const verified = await verifyRazorpayPayment(bookingId, {
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+            paymentMethod,
+          });
+          resolve(verified);
+        } catch (err) {
+          reject(err);
+        }
+      },
+      modal: {
+        ondismiss: () => reject(new Error("Payment cancelled or failed")),
+      },
+    });
+
+    checkout.on("payment.failed", () => reject(new Error("Payment cancelled or failed")));
+    checkout.open();
+  });
+}
+
+function InvoiceDetails({ invoice }) {
+  const rows = [
+    ["Invoice number", invoice.invoiceNumber],
+    ["Platform fee", formatCurrency(invoice.platformFee)],
+    ["CGST", formatCurrency(invoice.cgst)],
+    ["SGST", formatCurrency(invoice.sgst)],
+    ["Provider earning", formatCurrency(invoice.providerEarning)],
+    ["Total payable", formatCurrency(invoice.totalPayable)],
+  ];
+
+  return (
+    <div className="booking-invoice-details">
+      {rows.map(([label, value]) => (
+        <div key={label}>
+          <span>{label}</span>
+          <strong>{value || "-"}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function formatDate(value) {
   if (!value) return "—";
   const date = new Date(value);
@@ -1353,6 +1593,11 @@ function formatDate(value) {
 }
 
 function formatStatus(status) {
-  const value = String(status || "").toLowerCase();
+  const value = String(status || "").replace(/_/g, " ").toLowerCase();
   return value ? value[0].toUpperCase() + value.slice(1) : "Unknown";
+}
+
+function formatCurrency(value) {
+  const amount = Number(value ?? 0);
+  return `Rs. ${Number.isFinite(amount) ? amount.toLocaleString("en-IN") : "0"}`;
 }

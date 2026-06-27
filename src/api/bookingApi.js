@@ -23,6 +23,11 @@ export const saveCompletionImage = (bookingId, imageUrl) =>
 export const getCompletionImages = (bookingId) =>
   apiClient(`/api/provider/bookings/${bookingId}/completion-images`);
 
+export const confirmBookingCompletion = (bookingId) =>
+  apiClient(`/api/customer/bookings/${bookingId}/confirm-completion`, {
+    method: "PATCH",
+  });
+
 export const cancelBooking = (bookingId) =>
   apiClient(`/api/customer/bookings/${bookingId}/cancel`, { method: "PATCH" });
 

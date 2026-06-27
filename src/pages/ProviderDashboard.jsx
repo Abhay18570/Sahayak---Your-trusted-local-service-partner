@@ -19,6 +19,7 @@ import {
   getProviderServiceAreas,
   uploadProviderImage,
 } from "../api/providerApi";
+import { getProviderWallet } from "../api/walletApi";
 import { getMaskedAadhaar } from "../utils/providerKyc";
 
 export default function ProviderDashboard() {
@@ -29,6 +30,9 @@ export default function ProviderDashboard() {
   const [earnings, setEarnings] = useState(null);
   const [earningsLoading, setEarningsLoading] = useState(true);
   const [earningsError, setEarningsError] = useState("");
+  const [wallet, setWallet] = useState(null);
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [walletError, setWalletError] = useState("");
   const [serviceAreas, setServiceAreas] = useState([]);
   const [serviceAreasLoading, setServiceAreasLoading] = useState(true);
   const [serviceAreasError, setServiceAreasError] = useState("");
@@ -109,6 +113,23 @@ export default function ProviderDashboard() {
   }, [providerId]);
 
   useEffect(() => {
+    if (!providerId) {
+      setWalletError("Your provider account ID is missing.");
+      setWalletLoading(false);
+      return;
+    }
+
+    setWalletLoading(true);
+    setWalletError("");
+    getProviderWallet(providerId)
+      .then((response) => setWallet(response?.data || response))
+      .catch((err) =>
+        setWalletError(err.message || "Unable to load your wallet summary.")
+      )
+      .finally(() => setWalletLoading(false));
+  }, [providerId]);
+
+  useEffect(() => {
     const unresolvedCustomers = [...new Map(
       bookings
         .filter(
@@ -157,8 +178,8 @@ export default function ProviderDashboard() {
       );
     } catch (err) {
       setError(
-        status === "COMPLETED" && err.status === 400
-          ? "Please upload completion image before marking job as completed."
+        status === "WORK_DONE" && err.status === 400
+          ? "Please upload completion image before marking work done."
           : err.message || "Unable to update booking status."
       );
     } finally {
@@ -180,6 +201,12 @@ export default function ProviderDashboard() {
           earnings={earnings}
           loading={earningsLoading}
           error={earningsError}
+        />
+
+        <WalletSummary
+          wallet={wallet}
+          loading={walletLoading}
+          error={walletError}
         />
 
         <ServiceAreasSection
@@ -464,6 +491,54 @@ function EarningsSummary({ earnings, loading, error }) {
   );
 }
 
+function WalletSummary({ wallet, loading, error }) {
+  const cards = [
+    ["Total Earnings", formatCurrency(wallet?.totalEarnings), "star"],
+    ["Pending Earnings", formatCurrency(wallet?.pendingEarnings), "history"],
+    ["Withdrawable Balance", formatCurrency(wallet?.withdrawableBalance), "check"],
+    ["Total Paid Jobs", wallet?.totalPaidJobs ?? 0, "wrench"],
+  ];
+
+  return (
+    <section className="provider-wallet-section" aria-labelledby="provider-wallet-title">
+      <div className="provider-section-heading">
+        <span className="eyebrow">Wallet</span>
+        <h2 id="provider-wallet-title">Provider wallet</h2>
+      </div>
+
+      {error && (
+        <div
+          className="auth-alert"
+          role="alert"
+          style={{ background: "#fbe7e3", color: "#7a2f24" }}
+        >
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="provider-earnings-loading surface-card" aria-live="polite">
+          Loading wallet...
+        </div>
+      ) : !error ? (
+        <div className="provider-wallet-grid">
+          {cards.map(([title, value, icon]) => (
+            <article className="admin-metric-card provider-wallet-card" key={title}>
+              <span className="admin-metric-icon">
+                <ToolIcon name={icon} size={22} />
+              </span>
+              <div>
+                <strong>{value}</strong>
+                <span>{title}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function BookingRequestCard({ booking, customerName, updating, onStatusChange }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -478,7 +553,7 @@ function BookingRequestCard({ booking, customerName, updating, onStatusChange })
 
   useEffect(() => {
     let active = true;
-    if (!["ACCEPTED", "COMPLETED"].includes(booking.status)) return undefined;
+    if (!["ACCEPTED", "WORK_DONE", "COMPLETED"].includes(booking.status)) return undefined;
 
     getCompletionImages(booking.bookingId)
       .then((response) => {
@@ -553,14 +628,14 @@ function BookingRequestCard({ booking, customerName, updating, onStatusChange })
     }
   };
 
-  const handleComplete = () => {
+  const handleMarkWorkDone = () => {
     if (completionImages.length === 0) {
-      setProofError("Please upload completion image before marking job as completed.");
+      setProofError("Please upload completion image before marking work done.");
       return;
     }
 
     setProofError("");
-    onStatusChange(booking.bookingId, "COMPLETED");
+    onStatusChange(booking.bookingId, "WORK_DONE");
   };
 
   return (
@@ -618,15 +693,15 @@ function BookingRequestCard({ booking, customerName, updating, onStatusChange })
               type="button"
               className="btn-sahayak btn-sahayak-teal btn-sm"
               disabled={uploading || updating}
-              onClick={handleComplete}
+              onClick={handleMarkWorkDone}
             >
-              {updating ? "Updating..." : "Complete"}
+              {updating ? "Updating..." : "Mark work done"}
             </button>
           </div>
         </div>
       )}
 
-      {booking.status === "COMPLETED" && completionImages.length > 0 && (
+      {["WORK_DONE", "COMPLETED"].includes(booking.status) && completionImages.length > 0 && (
         <CompletionProofGallery images={completionImages} />
       )}
 
@@ -689,7 +764,7 @@ function formatDateTime(value) {
 }
 
 function formatStatus(status) {
-  const value = String(status || "").toLowerCase();
+  const value = String(status || "").replace(/_/g, " ").toLowerCase();
   return value ? value[0].toUpperCase() + value.slice(1) : "Unknown";
 }
 

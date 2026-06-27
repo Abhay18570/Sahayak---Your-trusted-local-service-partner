@@ -16,6 +16,7 @@ import {
 import { normalizeBooking, normalizeProvider, unwrapList } from "../api/normalizers";
 import { normalizeRole } from "../utils/roles";
 import { getAdminPayments } from "../api/paymentApi";
+import { downloadInvoicePdf, getInvoices } from "../api/invoiceApi";
 import { getMaskedAadhaar, getProviderImageUrl } from "../utils/providerKyc";
 
 const TABS = [
@@ -23,6 +24,7 @@ const TABS = [
   { id: "bookings", label: "Bookings" },
   { id: "reviews", label: "Reviews" },
   { id: "payments", label: "Payments" },
+  { id: "invoices", label: "Invoices" },
   { id: "pending-providers", label: "Pending Providers" },
 ];
 
@@ -36,6 +38,7 @@ export default function AdminDashboard() {
   const [pendingProviders, setPendingProviders] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -51,6 +54,7 @@ export default function AdminDashboard() {
       getPendingProviders(),
       getAdminReviews(),
       getAdminPayments(),
+      getInvoices(),
     ])
       .then(([
         statsResponse,
@@ -60,6 +64,7 @@ export default function AdminDashboard() {
         pendingProvidersResponse,
         reviewsResponse,
         paymentsResponse,
+        invoicesResponse,
       ]) => {
         setStats(statsResponse?.data || statsResponse || {});
         setUsers(unwrapList(usersResponse));
@@ -68,6 +73,7 @@ export default function AdminDashboard() {
         setPendingProviders(unwrapList(pendingProvidersResponse).map(normalizePendingProvider));
         setReviews(unwrapList(reviewsResponse));
         setPayments(unwrapList(paymentsResponse));
+        setInvoices(unwrapList(invoicesResponse).map(normalizeInvoice));
       })
       .catch((err) => setError(err.message || "Unable to load admin dashboard."))
       .finally(() => setLoading(false));
@@ -144,6 +150,7 @@ export default function AdminDashboard() {
     ["Total bookings", stat(stats, "totalBookings", bookings.length), "calendar"],
     ["Completed bookings", stat(stats, "completedBookings", countStatus(bookings, "COMPLETED")), "check"],
     ["Total reviews", stat(stats, "totalReviews", reviews.length), "star"],
+    ["Platform earnings", formatCurrency(getTotalPlatformEarnings(invoices)), "check"],
   ];
 
   return (
@@ -204,6 +211,8 @@ export default function AdminDashboard() {
           <ReviewsTable reviews={reviews} userNames={userNames} providerNames={providerNames} />
         ) : activeTab === "payments" ? (
           <PaymentsTable payments={payments} userNames={userNames} />
+        ) : activeTab === "invoices" ? (
+          <InvoicesTable invoices={invoices} />
         ) : (
           <PendingProvidersTable
             providers={pendingProviders}
@@ -327,6 +336,83 @@ function PaymentsTable({ payments, userNames }) {
   );
 }
 
+function InvoicesTable({ invoices }) {
+  const totalPlatformEarnings = getTotalPlatformEarnings(invoices);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [downloadError, setDownloadError] = useState("");
+
+  const handleDownload = async (bookingId) => {
+    setDownloadingId(bookingId);
+    setDownloadError("");
+    try {
+      await downloadInvoicePdf(bookingId);
+    } catch (err) {
+      setDownloadError(err.message || "Unable to download invoice.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  return (
+    <section className="admin-invoices-section">
+      <div className="admin-invoice-summary surface-card">
+        <span className="admin-metric-icon"><ToolIcon name="check" size={22} /></span>
+        <div>
+          <strong>{formatCurrency(totalPlatformEarnings)}</strong>
+          <span>Total platform earning</span>
+        </div>
+      </div>
+      {downloadError && (
+        <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
+          {downloadError}
+        </div>
+      )}
+      <Table
+        headers={[
+          "Invoice",
+          "Booking",
+          "Customer",
+          "Provider",
+          "Service amount",
+          "Platform fee",
+          "CGST",
+          "SGST",
+          "Provider earning",
+          "Total payable",
+          "Created",
+          "Download",
+        ]}
+      >
+        {invoices.map((invoice) => (
+          <tr key={invoice.id ?? invoice.invoiceNumber ?? invoice.bookingId}>
+            <td><strong>{invoice.invoiceNumber || "-"}</strong></td>
+            <td>#{invoice.bookingId ?? "-"}</td>
+            <td>{invoice.customerId ?? "-"}</td>
+            <td>{invoice.providerId ?? "-"}</td>
+            <td>{formatCurrency(invoice.serviceAmount)}</td>
+            <td>{formatCurrency(invoice.platformFee)}</td>
+            <td>{formatCurrency(invoice.cgst)}</td>
+            <td>{formatCurrency(invoice.sgst)}</td>
+            <td>{formatCurrency(invoice.providerEarning)}</td>
+            <td>{formatCurrency(invoice.totalPayable)}</td>
+            <td>{formatDate(invoice.createdAt)}</td>
+            <td>
+              <button
+                type="button"
+                className="btn-sahayak btn-sahayak-outline btn-sm"
+                disabled={downloadingId === invoice.bookingId || invoice.bookingId == null}
+                onClick={() => handleDownload(invoice.bookingId)}
+              >
+                {downloadingId === invoice.bookingId ? "Downloading..." : "Download"}
+              </button>
+            </td>
+          </tr>
+        ))}
+      </Table>
+    </section>
+  );
+}
+
 function PendingProvidersTable({ providers, providerAction, onDecision }) {
   if (providers.length === 0) {
     return (
@@ -421,6 +507,13 @@ function countStatus(bookings, status) {
   return bookings.filter((booking) => booking.status === status).length;
 }
 
+function getTotalPlatformEarnings(invoices) {
+  return invoices.reduce(
+    (total, invoice) => total + invoice.platformFee + invoice.cgst + invoice.sgst,
+    0
+  );
+}
+
 function getName(user) {
   return user.name || [user.firstName, user.lastName].filter(Boolean).join(" ") || `User #${user.id ?? user.userId}`;
 }
@@ -446,6 +539,24 @@ function normalizePendingProvider(provider) {
     bio: provider.bio ?? provider.description ?? "",
     verificationStatus:
       provider.verificationStatus ?? provider.status ?? (provider.verified ? "VERIFIED" : "PENDING"),
+  };
+}
+
+function normalizeInvoice(invoice) {
+  return {
+    ...invoice,
+    id: invoice.id ?? invoice.invoiceId,
+    invoiceNumber: invoice.invoiceNumber ?? invoice.number ?? invoice.invoiceNo ?? `#${invoice.id ?? invoice.invoiceId ?? ""}`,
+    bookingId: invoice.bookingId ?? invoice.booking?.id,
+    customerId: invoice.customerId ?? invoice.customer?.id ?? invoice.booking?.customerId,
+    providerId: invoice.providerId ?? invoice.provider?.id ?? invoice.booking?.providerId,
+    serviceAmount: Number(invoice.serviceAmount ?? invoice.amount ?? invoice.booking?.quotedAmount ?? 0),
+    platformFee: Number(invoice.platformFee ?? 0),
+    cgst: Number(invoice.cgst ?? invoice.CGST ?? 0),
+    sgst: Number(invoice.sgst ?? invoice.SGST ?? 0),
+    providerEarning: Number(invoice.providerEarning ?? invoice.providerEarnings ?? 0),
+    totalPayable: Number(invoice.totalPayable ?? invoice.totalAmount ?? invoice.amount ?? 0),
+    createdAt: invoice.createdAt ?? invoice.invoiceDate ?? invoice.generatedAt,
   };
 }
 
@@ -502,6 +613,11 @@ function formatDate(value) {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+function formatCurrency(value) {
+  const amount = Number(value ?? 0);
+  return `Rs. ${Number.isFinite(amount) ? amount.toLocaleString("en-IN") : "0"}`;
 }
 
 function formatValue(value) {

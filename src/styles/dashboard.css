@@ -447,6 +447,10 @@
   margin-bottom: 2rem;
 }
 
+.provider-wallet-section {
+  margin-bottom: 2rem;
+}
+
 .provider-section-heading {
   margin-bottom: 1rem;
 }
@@ -460,6 +464,16 @@
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.provider-wallet-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.provider-wallet-card {
+  min-width: 0;
 }
 
 .provider-earnings-loading {
@@ -586,7 +600,8 @@
 
 .status-badge.requested,
 .status-badge.accepted,
-.status-badge.pending { background: var(--teal-100); color: var(--teal-700); }
+.status-badge.pending,
+.status-badge.work_done { background: var(--teal-100); color: var(--teal-700); }
 
 .status-badge.paid,
 .status-badge.success { background: #e3f3e8; color: var(--success); }
@@ -682,6 +697,78 @@
 .booking-payment-status span {
   color: var(--ink-500);
   font-size: 0.84rem;
+}
+
+.booking-invoice-status {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.booking-payment-summary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.booking-invoice-details {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+}
+
+.booking-invoice-details div {
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.75rem;
+}
+
+.booking-invoice-details span,
+.booking-invoice-details strong {
+  display: block;
+}
+
+.booking-invoice-details strong {
+  color: var(--ink-900);
+  font-size: 0.9rem;
+  margin-top: 0.2rem;
+}
+
+.booking-invoice-email {
+  color: var(--success) !important;
+  font-weight: 700;
+}
+
+.admin-invoices-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-invoice-summary {
+  align-items: center;
+  display: flex;
+  gap: 0.9rem;
+  padding: 1.1rem;
+  width: min(100%, 360px);
+}
+
+.admin-invoice-summary strong,
+.admin-invoice-summary span {
+  display: block;
+}
+
+.admin-invoice-summary strong {
+  color: var(--ink-900);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.admin-invoice-summary div > span {
+  color: var(--ink-500);
+  font-size: 0.82rem;
 }
 
 .booking-status-actions {
@@ -839,15 +926,18 @@
 @media (max-width: 768px) {
   .admin-metric-grid { grid-template-columns: repeat(2, 1fr); }
   .provider-earnings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .provider-wallet-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .provider-service-areas-layout { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 520px) {
   .admin-metric-grid { grid-template-columns: 1fr; }
   .provider-earnings-grid { grid-template-columns: 1fr; }
+  .provider-wallet-grid { grid-template-columns: 1fr; }
   .customer-profile-grid { grid-template-columns: 1fr; }
   .customer-profile-actions .btn-sahayak { width: 100%; }
   .provider-service-area-card { align-items: stretch; flex-direction: column; }
   .provider-service-area-card .btn-sahayak { width: 100%; }
   .booking-slot-fields { grid-template-columns: 1fr; }
+  .booking-invoice-details { grid-template-columns: 1fr; }
 }

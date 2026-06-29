@@ -62,6 +62,9 @@ export const registerProvider = (provider) =>
       profileImageUrl: provider.profileImageUrl,
       aadhaarNumber: provider.aadhaarNumber,
       categoryId: Number(provider.categoryId),
+      ...(provider.customServiceName
+        ? { customServiceName: provider.customServiceName }
+        : {}),
       price: Number(provider.price),
       priceUnit: "VISIT",
     },

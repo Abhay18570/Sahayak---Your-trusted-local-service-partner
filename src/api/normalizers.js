@@ -33,13 +33,20 @@ export function normalizeProvider(provider) {
   }
   const service = provider.providerService ?? provider.providerServices?.[0] ?? provider.services?.[0];
   const name = provider.name ?? provider.user?.name ?? "Provider";
-  const category =
+  const customServiceName =
+    provider.customServiceName ??
+    provider.providerProfile?.customServiceName ??
+    service?.customServiceName;
+  const categoryName =
     provider.category?.name ??
     provider.category ??
     provider.categoryName ??
     service?.category?.name ??
     provider.serviceName ??
     "Service";
+  const category = isOthersCategoryName(categoryName) && customServiceName
+    ? customServiceName
+    : categoryName;
 
   return {
     ...safeProvider,
@@ -65,6 +72,10 @@ export function normalizeProvider(provider) {
     verified: provider.verified ?? provider.verificationStatus === "VERIFIED",
     tags: provider.tags ?? provider.skills?.map((skill) => skill.name ?? skill) ?? [],
   };
+}
+
+function isOthersCategoryName(value) {
+  return String(value || "").trim().toLowerCase() === "others";
 }
 
 export function normalizeBooking(booking) {

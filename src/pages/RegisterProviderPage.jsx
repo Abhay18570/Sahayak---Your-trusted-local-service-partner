@@ -34,6 +34,7 @@ export default function RegisterProviderPage() {
     bio: "",
     aadhaarNumber: "",
     categoryId: "",
+    customServiceName: "",
     price: "",
     locality: "",
     city: "",
@@ -50,6 +51,17 @@ export default function RegisterProviderPage() {
   const { registerProvider } = useAuth();
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+  const updateCategory = (event) => {
+    const categoryId = event.target.value;
+    const selectedCategory = categories.find(
+      (category) => String(category.id) === String(categoryId)
+    );
+    setForm({
+      ...form,
+      categoryId,
+      customServiceName: isOthersCategory(selectedCategory) ? form.customServiceName : "",
+    });
+  };
   const updateAadhaar = (event) => {
     const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
     const formatted = digits.match(/.{1,4}/g)?.join(" ") || "";
@@ -104,12 +116,21 @@ export default function RegisterProviderPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const selectedCategory = categories.find(
+      (category) => String(category.id) === String(form.categoryId)
+    );
+    const isCustomService = isOthersCategory(selectedCategory);
+
     if (!form.name || !form.email || !form.phone || !form.password) {
       setError("Fill in your name, email, phone number and password to continue.");
       return;
     }
     if (!form.categoryId) {
       setError("Select a service category to continue.");
+      return;
+    }
+    if (isCustomService && !form.customServiceName.trim()) {
+      setError("Specify your service to continue.");
       return;
     }
     if (form.price === "") {
@@ -195,6 +216,7 @@ export default function RegisterProviderPage() {
         profileImageUrl,
         aadhaarNumber,
         categoryId: Number(form.categoryId),
+        customServiceName: isCustomService ? form.customServiceName.trim() : undefined,
         price: Number(form.price),
         priceUnit: "VISIT",
       });
@@ -411,7 +433,7 @@ export default function RegisterProviderPage() {
                   <select
                     id="prov-category"
                     value={form.categoryId}
-                    onChange={update("categoryId")}
+                    onChange={updateCategory}
                     required
                   >
                     <option value="">Select a category</option>
@@ -439,6 +461,25 @@ export default function RegisterProviderPage() {
                 </div>
               </div>
             </div>
+
+            {isOthersCategory(
+              categories.find((category) => String(category.id) === String(form.categoryId))
+            ) && (
+              <div className="form-field-group">
+                <label htmlFor="prov-custom-service">Specify your service</label>
+                <div className="input-with-icon">
+                  <ToolIcon name="wrench" size={17} />
+                  <input
+                    id="prov-custom-service"
+                    type="text"
+                    placeholder="e.g. Appliance repair"
+                    value={form.customServiceName}
+                    onChange={update("customServiceName")}
+                    required
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="form-row-2">
               <div className="form-field-group">
@@ -634,4 +675,9 @@ export default function RegisterProviderPage() {
 
 function formatDay(day) {
   return day[0] + day.slice(1).toLowerCase();
+}
+
+function isOthersCategory(category) {
+  return [category?.label, category?.name, category?.categoryName, category?.slug, category?.id]
+    .some((value) => String(value || "").trim().toLowerCase() === "others");
 }

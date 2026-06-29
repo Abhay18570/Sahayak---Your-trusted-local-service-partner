@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ToolIcon from "./ToolIcon";
 import { hasRole, ROLES } from "../utils/roles";
+import sahayakLogo from "../sahayak_logo/Sahayak_logo.png";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -15,7 +16,9 @@ export default function Navbar() {
     <header className="sahayak-nav">
       <div className="container-sahayak sahayak-nav-inner">
         <Link to="/" className="sahayak-brand" onClick={close}>
-          <span className="sahayak-brand-mark">S</span>
+          <span className="sahayak-brand-mark">
+            <img src={sahayakLogo} alt="" aria-hidden="true" />
+          </span>
           <span className="sahayak-brand-name">Sahayak</span>
         </Link>
 

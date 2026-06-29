@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import ToolIcon from "./ToolIcon";
 import { useAuth } from "../context/AuthContext";
 import { hasRole, ROLES } from "../utils/roles";
+import sahayakLogo from "../sahayak_logo/Sahayak_logo.png";
 
 export default function Footer() {
   const { user } = useAuth();
@@ -12,7 +13,9 @@ export default function Footer() {
       <div className="container-sahayak sahayak-footer-grid">
         <div className="sahayak-footer-brand">
           <Link to="/" className="sahayak-brand">
-            <span className="sahayak-brand-mark">S</span>
+            <span className="sahayak-brand-mark">
+              <img src={sahayakLogo} alt="" aria-hidden="true" />
+            </span>
             <span className="sahayak-brand-name on-dark">Sahayak</span>
           </Link>
           <p className="sahayak-footer-tag">
@@ -45,10 +48,12 @@ export default function Footer() {
         <div className="sahayak-footer-col">
           <h6 className="eyebrow on-dark">Contact</h6>
           <p className="sahayak-footer-contact">
-            <ToolIcon name="phone" size={15} /> +91 88000 11223
+            <ToolIcon name="phone" size={15} />{" "}
+            <a href="tel:+919834244904">+91 98342 44904</a>
           </p>
           <p className="sahayak-footer-contact">
-            <ToolIcon name="mail" size={15} /> help@sahayak.in
+            <ToolIcon name="mail" size={15} />{" "}
+            <a href="mailto:teamsahayak03@gmail.com">teamsahayak03@gmail.com</a>
           </p>
           <p className="sahayak-footer-contact">
             <ToolIcon name="pin" size={15} /> Thane, Maharashtra, India

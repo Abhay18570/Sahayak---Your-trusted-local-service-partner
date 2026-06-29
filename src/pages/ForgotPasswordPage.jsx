@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
 import { forgotPassword, resetPassword } from "../api/authApi";
+import { validateEmail } from "../utils/formValidation";
 
 export default function ForgotPasswordPage() {
   const [step, setStep] = useState(1);
@@ -12,6 +13,7 @@ export default function ForgotPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
   const navigate = useNavigate();
@@ -35,6 +37,12 @@ export default function ForgotPasswordPage() {
 
     if (!normalizedEmail) {
       setError("Enter your registered email address.");
+      return;
+    }
+    const nextEmailError = validateEmail(normalizedEmail);
+    setEmailError(nextEmailError);
+    if (nextEmailError) {
+      setError("");
       return;
     }
 
@@ -95,6 +103,7 @@ export default function ForgotPasswordPage() {
     setNewPassword("");
     setConfirmPassword("");
     setError("");
+    setEmailError("");
     setMessage("");
   };
 
@@ -150,7 +159,7 @@ export default function ForgotPasswordPage() {
             <form onSubmit={handleSendOtp}>
               <div className="form-field-group">
                 <label htmlFor="forgot-email">Email address</label>
-                <div className="input-with-icon">
+                <div className={`input-with-icon ${emailError ? "field-invalid" : ""}`}>
                   <ToolIcon name="mail" size={17} />
                   <input
                     id="forgot-email"
@@ -158,10 +167,14 @@ export default function ForgotPasswordPage() {
                     autoComplete="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    onChange={(event) => {
+                      setEmail(event.target.value);
+                      setEmailError(validateEmail(event.target.value));
+                    }}
                     disabled={submitting}
                   />
                 </div>
+                {emailError && <p className="field-error">{emailError}</p>}
               </div>
 
               <button

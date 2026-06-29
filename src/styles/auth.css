@@ -127,6 +127,12 @@
   margin-top: 0.35rem;
 }
 
+.form-field-group .field-error {
+  color: var(--danger);
+  font-size: 0.76rem;
+  margin-top: 0.35rem;
+}
+
 .input-with-icon {
   display: flex;
   align-items: center;
@@ -139,6 +145,12 @@
 }
 .input-with-icon:focus-within {
   border-color: var(--teal-600);
+}
+.input-with-icon.field-invalid {
+  border-color: var(--danger);
+}
+.input-with-icon.field-invalid:focus-within {
+  border-color: var(--danger);
 }
 .input-with-icon svg {
   color: var(--ink-300);

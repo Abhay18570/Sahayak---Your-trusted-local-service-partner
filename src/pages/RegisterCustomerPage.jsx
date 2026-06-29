@@ -2,6 +2,13 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
 import { useAuth } from "../context/AuthContext";
+import {
+  hasValidationErrors,
+  sanitizeMobileNumber,
+  validateEmail,
+  validateMobileNumber,
+  validateName,
+} from "../utils/formValidation";
 
 export default function RegisterCustomerPage() {
   const [form, setForm] = useState({
@@ -11,15 +18,33 @@ export default function RegisterCustomerPage() {
     locality: "",
     password: "",
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { registerCustomer } = useAuth();
   const navigate = useNavigate();
 
-  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+  const update = (field) => (e) => {
+    const value = field === "phone" ? sanitizeMobileNumber(e.target.value) : e.target.value;
+    setForm({ ...form, [field]: value });
+    setFieldErrors((current) => ({
+      ...current,
+      [field]: validateCustomerField(field, value),
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const nextFieldErrors = {
+      name: validateName(form.name),
+      email: validateEmail(form.email),
+      phone: validateMobileNumber(form.phone),
+    };
+    setFieldErrors(nextFieldErrors);
+    if (hasValidationErrors(nextFieldErrors)) {
+      setError("");
+      return;
+    }
     if (!form.name || !form.email || !form.password) {
       setError("Fill in your name, email and a password to create your account.");
       return;
@@ -77,7 +102,7 @@ export default function RegisterCustomerPage() {
           <form onSubmit={handleSubmit}>
             <div className="form-field-group">
               <label htmlFor="cust-name">Full name</label>
-              <div className="input-with-icon">
+              <div className={`input-with-icon ${fieldErrors.name ? "field-invalid" : ""}`}>
                 <ToolIcon name="user" size={17} />
                 <input
                   id="cust-name"
@@ -87,12 +112,13 @@ export default function RegisterCustomerPage() {
                   onChange={update("name")}
                 />
               </div>
+              {fieldErrors.name && <p className="field-error">{fieldErrors.name}</p>}
             </div>
 
             <div className="form-row-2">
               <div className="form-field-group">
                 <label htmlFor="cust-email">Email address</label>
-                <div className="input-with-icon">
+                <div className={`input-with-icon ${fieldErrors.email ? "field-invalid" : ""}`}>
                   <ToolIcon name="mail" size={17} />
                   <input
                     id="cust-email"
@@ -102,19 +128,23 @@ export default function RegisterCustomerPage() {
                     onChange={update("email")}
                   />
                 </div>
+                {fieldErrors.email && <p className="field-error">{fieldErrors.email}</p>}
               </div>
               <div className="form-field-group">
                 <label htmlFor="cust-phone">Phone number</label>
-                <div className="input-with-icon">
+                <div className={`input-with-icon ${fieldErrors.phone ? "field-invalid" : ""}`}>
                   <ToolIcon name="phone" size={17} />
                   <input
                     id="cust-phone"
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     placeholder="98765 43210"
                     value={form.phone}
                     onChange={update("phone")}
                   />
                 </div>
+                {fieldErrors.phone && <p className="field-error">{fieldErrors.phone}</p>}
               </div>
             </div>
 
@@ -170,4 +200,11 @@ export default function RegisterCustomerPage() {
       </div>
     </div>
   );
+}
+
+function validateCustomerField(field, value) {
+  if (field === "name") return validateName(value);
+  if (field === "email") return validateEmail(value);
+  if (field === "phone") return validateMobileNumber(value);
+  return "";
 }

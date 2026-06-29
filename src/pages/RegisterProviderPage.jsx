@@ -9,6 +9,13 @@ import {
   saveProviderAvailability,
   uploadProviderImage,
 } from "../api/providerApi";
+import {
+  hasValidationErrors,
+  sanitizeMobileNumber,
+  validateEmail,
+  validateMobileNumber,
+  validateName,
+} from "../utils/formValidation";
 
 const WORKING_DAYS = [
   "MONDAY",
@@ -40,6 +47,7 @@ export default function RegisterProviderPage() {
     city: "",
     state: "",
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +58,14 @@ export default function RegisterProviderPage() {
   const [profileImagePreview, setProfileImagePreview] = useState("");
   const { registerProvider } = useAuth();
 
-  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+  const update = (field) => (e) => {
+    const value = field === "phone" ? sanitizeMobileNumber(e.target.value) : e.target.value;
+    setForm({ ...form, [field]: value });
+    setFieldErrors((current) => ({
+      ...current,
+      [field]: validateProviderField(field, value),
+    }));
+  };
   const updateCategory = (event) => {
     const categoryId = event.target.value;
     const selectedCategory = categories.find(
@@ -120,6 +135,16 @@ export default function RegisterProviderPage() {
       (category) => String(category.id) === String(form.categoryId)
     );
     const isCustomService = isOthersCategory(selectedCategory);
+    const nextFieldErrors = {
+      name: validateName(form.name),
+      email: validateEmail(form.email),
+      phone: validateMobileNumber(form.phone),
+    };
+    setFieldErrors(nextFieldErrors);
+    if (hasValidationErrors(nextFieldErrors)) {
+      setError("");
+      return;
+    }
 
     if (!form.name || !form.email || !form.phone || !form.password) {
       setError("Fill in your name, email, phone number and password to continue.");
@@ -340,7 +365,7 @@ export default function RegisterProviderPage() {
             <div className="form-row-2">
               <div className="form-field-group">
                 <label htmlFor="prov-name">Full name</label>
-                <div className="input-with-icon">
+                <div className={`input-with-icon ${fieldErrors.name ? "field-invalid" : ""}`}>
                   <ToolIcon name="user" size={17} />
                   <input
                     id="prov-name"
@@ -350,25 +375,29 @@ export default function RegisterProviderPage() {
                     onChange={update("name")}
                   />
                 </div>
+                {fieldErrors.name && <p className="field-error">{fieldErrors.name}</p>}
               </div>
               <div className="form-field-group">
                 <label htmlFor="prov-phone">Phone number</label>
-                <div className="input-with-icon">
+                <div className={`input-with-icon ${fieldErrors.phone ? "field-invalid" : ""}`}>
                   <ToolIcon name="phone" size={17} />
                   <input
                     id="prov-phone"
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     placeholder="98765 43210"
                     value={form.phone}
                     onChange={update("phone")}
                   />
                 </div>
+                {fieldErrors.phone && <p className="field-error">{fieldErrors.phone}</p>}
               </div>
             </div>
 
             <div className="form-field-group">
               <label htmlFor="prov-email">Email address</label>
-              <div className="input-with-icon">
+              <div className={`input-with-icon ${fieldErrors.email ? "field-invalid" : ""}`}>
                 <ToolIcon name="mail" size={17} />
                 <input
                   id="prov-email"
@@ -378,6 +407,7 @@ export default function RegisterProviderPage() {
                   onChange={update("email")}
                 />
               </div>
+              {fieldErrors.email && <p className="field-error">{fieldErrors.email}</p>}
             </div>
 
             <fieldset className="provider-service-area-fields">
@@ -680,4 +710,11 @@ function formatDay(day) {
 function isOthersCategory(category) {
   return [category?.label, category?.name, category?.categoryName, category?.slug, category?.id]
     .some((value) => String(value || "").trim().toLowerCase() === "others");
+}
+
+function validateProviderField(field, value) {
+  if (field === "name") return validateName(value);
+  if (field === "email") return validateEmail(value);
+  if (field === "phone") return validateMobileNumber(value);
+  return "";
 }

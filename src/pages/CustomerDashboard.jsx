@@ -24,6 +24,12 @@ import {
   normalizeProvider,
   unwrapList,
 } from "../api/normalizers";
+import {
+  hasValidationErrors,
+  sanitizeMobileNumber,
+  validateMobileNumber,
+  validateName,
+} from "../utils/formValidation";
 
 const TABS = [
   { id: "search", label: "Search services", icon: "search" },
@@ -756,6 +762,7 @@ function CustomerProfile({ userId }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -783,7 +790,7 @@ function CustomerProfile({ userId }) {
         setProfile(normalizedProfile);
         setForm({
           name: normalizedProfile.name,
-          phone: normalizedProfile.phone,
+          phone: sanitizeMobileNumber(normalizedProfile.phone),
           city: normalizedProfile.city,
           locality: normalizedProfile.locality,
         });
@@ -813,6 +820,15 @@ function CustomerProfile({ userId }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const nextFieldErrors = {
+      name: validateName(form.name),
+      phone: validateMobileNumber(form.phone),
+    };
+    setFieldErrors(nextFieldErrors);
+    if (hasValidationErrors(nextFieldErrors)) {
+      setMessage(null);
+      return;
+    }
 
     if (!form.name.trim() || !form.phone.trim()) {
       setMessage({ type: "error", text: "Name and phone are required." });
@@ -839,7 +855,7 @@ function CustomerProfile({ userId }) {
       setProfile(nextProfile);
       setForm({
         name: nextProfile.name,
-        phone: nextProfile.phone,
+        phone: sanitizeMobileNumber(nextProfile.phone),
         city: nextProfile.city,
         locality: nextProfile.locality,
       });
@@ -892,32 +908,43 @@ function CustomerProfile({ userId }) {
         <div className="customer-profile-grid">
           <div className="form-field-group">
             <label htmlFor="customer-profile-name">Name</label>
-            <div className="input-with-icon">
+            <div className={`input-with-icon ${fieldErrors.name ? "field-invalid" : ""}`}>
               <ToolIcon name="user" size={17} />
               <input
                 id="customer-profile-name"
                 type="text"
                 value={form.name}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, name: event.target.value }))
-                }
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setForm((current) => ({ ...current, name: value }));
+                  setFieldErrors((current) => ({ ...current, name: validateName(value) }));
+                }}
               />
             </div>
+            {fieldErrors.name && <p className="field-error">{fieldErrors.name}</p>}
           </div>
 
           <div className="form-field-group">
             <label htmlFor="customer-profile-phone">Phone</label>
-            <div className="input-with-icon">
+            <div className={`input-with-icon ${fieldErrors.phone ? "field-invalid" : ""}`}>
               <ToolIcon name="phone" size={17} />
               <input
                 id="customer-profile-phone"
                 type="tel"
+                inputMode="numeric"
+                maxLength={10}
                 value={form.phone}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, phone: event.target.value }))
-                }
+                onChange={(event) => {
+                  const value = sanitizeMobileNumber(event.target.value);
+                  setForm((current) => ({ ...current, phone: value }));
+                  setFieldErrors((current) => ({
+                    ...current,
+                    phone: validateMobileNumber(value),
+                  }));
+                }}
               />
             </div>
+            {fieldErrors.phone && <p className="field-error">{fieldErrors.phone}</p>}
           </div>
 
           <div className="form-field-group">

@@ -5,6 +5,7 @@ import ToolIcon from "../components/ToolIcon";
 import { useAuth } from "../context/AuthContext";
 import { googleCustomerLogin } from "../api/authApi";
 import { dashboardPathForRole } from "../utils/roles";
+import { validateEmail } from "../utils/formValidation";
 
 export default function LoginPage() {
   const [role, setRole] = useState("customer");
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const { login } = useAuth();
@@ -20,6 +22,12 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const nextEmailError = validateEmail(email);
+    setEmailError(nextEmailError);
+    if (nextEmailError) {
+      setError("");
+      return;
+    }
     if (!email || !password) {
       setError("Enter both your email and password to continue.");
       return;
@@ -108,6 +116,7 @@ export default function LoginPage() {
                 e.preventDefault();
                 setRole("customer");
                 setError("");
+                setEmailError("");
               }}
             >
               I'm a customer
@@ -119,6 +128,7 @@ export default function LoginPage() {
                 e.preventDefault();
                 setRole("provider");
                 setError("");
+                setEmailError("");
               }}
             >
               I'm a provider
@@ -130,6 +140,7 @@ export default function LoginPage() {
                 e.preventDefault();
                 setRole("admin");
                 setError("");
+                setEmailError("");
               }}
             >
               I'm an admin
@@ -145,16 +156,20 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit}>
             <div className="form-field-group">
               <label htmlFor="login-email">Email address</label>
-              <div className="input-with-icon">
+              <div className={`input-with-icon ${emailError ? "field-invalid" : ""}`}>
                 <ToolIcon name="mail" size={17} />
                 <input
                   id="login-email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError(validateEmail(e.target.value));
+                  }}
                 />
               </div>
+              {emailError && <p className="field-error">{emailError}</p>}
             </div>
 
             <div className="form-field-group">

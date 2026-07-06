@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
@@ -16,9 +16,18 @@ export default function LoginPage() {
   const [emailError, setEmailError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (!user) return;
+
+    const dashboardPath = dashboardPathForRole(user.role);
+    if (dashboardPath) {
+      navigate(dashboardPath, { replace: true });
+    }
+  }, [navigate, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

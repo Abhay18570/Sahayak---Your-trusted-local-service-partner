@@ -73,11 +73,16 @@
 }
 
 .sahayak-nav-link {
+  background: none;
+  border: 0;
   font-weight: 500;
+  font-family: inherit;
   font-size: 0.95rem;
   color: var(--ink-700);
   padding: 0.4rem 0;
   border-bottom: 2px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 .sahayak-nav-link:hover,

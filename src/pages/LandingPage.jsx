@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
+import { useAuth } from "../context/AuthContext";
+import { dashboardPathForRole } from "../utils/roles";
 
 const testimonials = [
   {
@@ -48,6 +50,17 @@ const steps = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+
+    const dashboardPath = dashboardPathForRole(user.role);
+    if (dashboardPath) {
+      navigate(dashboardPath, { replace: true });
+    }
+  }, [navigate, user]);
+
   return (
     <>
       {/* ================= HERO ================= */}

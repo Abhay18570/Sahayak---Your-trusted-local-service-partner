@@ -38,10 +38,16 @@ const TABS = [
   { id: "profile", label: "Profile", icon: "user" },
 ];
 
+function getValidCustomerTab(tabId) {
+  return TABS.some((tab) => tab.id === tabId) ? tabId : null;
+}
+
 export default function CustomerDashboard() {
   const location = useLocation();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("search");
+  const [activeTab, setActiveTab] = useState(() =>
+    getValidCustomerTab(location.state?.activeTab) || "search"
+  );
   const [query, setQuery] = useState(location.state?.service || "");
   const [city, setCity] = useState(location.state?.city || user?.city || "");
   const [locality, setLocality] = useState(
@@ -83,11 +89,7 @@ export default function CustomerDashboard() {
     if (!customerId) return;
     const response = await getCustomerPayments(customerId);
     const payments = unwrapList(response);
-    setPaymentsByBooking(Object.fromEntries(
-      payments
-        .map((payment) => [payment.bookingId ?? payment.booking?.id, payment])
-        .filter(([bookingId]) => bookingId != null)
-    ));
+    setPaymentsByBooking(indexPaymentsByBooking(payments));
   };
 
   useEffect(() => {
@@ -125,6 +127,13 @@ export default function CustomerDashboard() {
     // customerId changes only when the authenticated account changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
+
+  useEffect(() => {
+    const nextTab = getValidCustomerTab(location.state?.activeTab);
+    if (nextTab) {
+      setActiveTab(nextTab);
+    }
+  }, [location.state?.activeTab]);
 
   useEffect(() => {
     const missingProviderIds = [...new Set(
@@ -352,15 +361,25 @@ export default function CustomerDashboard() {
     }
   };
 
-  const handlePaymentCreated = async (bookingId, payment) => {
+  const handlePaymentCreated = async (bookingId, payment, paymentMethod) => {
+    const nextPayment = normalizePaymentForBooking(bookingId, payment, paymentMethod);
     setPaymentsByBooking((current) => ({
       ...current,
-      [bookingId]: payment,
+      [bookingId]: nextPayment,
     }));
     try {
       await Promise.all([loadBookings(), loadPayments()]);
     } catch {
       // The verified payment result remains valid even if refreshing fails.
+    }
+    await loadInvoiceForBooking(bookingId);
+  };
+
+  const handlePaymentAlreadyExists = async (bookingId) => {
+    try {
+      await Promise.all([loadPayments(), loadBookings()]);
+    } catch {
+      // A stale payment panel can still recover once the next refresh succeeds.
     }
     await loadInvoiceForBooking(bookingId);
   };
@@ -392,6 +411,11 @@ export default function CustomerDashboard() {
   }, [providers, minRating, sortBy]);
 
   const recommended = providers.slice(0, 3);
+
+  const getPaymentForBooking = (bookingId) =>
+    Object.values(paymentsByBooking).find((payment) => paymentBelongsToBooking(payment, bookingId));
+
+  const isBookingPaid = (bookingId) => Boolean(getPaymentForBooking(bookingId));
 
   const clearFilters = () => {
     setQuery("");
@@ -718,13 +742,16 @@ export default function CustomerDashboard() {
                                   <>
                                     <PaymentPanel
                                       booking={b}
-                                      payment={paymentsByBooking[b.bookingId]}
+                                      payment={isBookingPaid(b.bookingId) ? getPaymentForBooking(b.bookingId) : null}
                                       invoice={invoicesByBooking[b.bookingId]}
                                       invoiceError={invoiceErrorsByBooking[b.bookingId]}
                                       invoiceLoading={loadingInvoiceId === b.bookingId}
                                       invoiceDownloading={downloadingInvoiceId === b.bookingId}
                                       customer={user}
-                                      onPaymentCreated={(payment) => handlePaymentCreated(b.bookingId, payment)}
+                                      onPaymentCreated={(payment, paymentMethod) =>
+                                        handlePaymentCreated(b.bookingId, payment, paymentMethod)
+                                      }
+                                      onPaymentAlreadyExists={() => handlePaymentAlreadyExists(b.bookingId)}
                                       onViewInvoice={() => loadInvoiceForBooking(b.bookingId)}
                                       onDownloadInvoice={() => handleDownloadInvoice(b.bookingId)}
                                     />
@@ -1378,6 +1405,33 @@ function normalizeInvoice(response) {
   };
 }
 
+function getPaymentBookingId(payment) {
+  return payment?.bookingId ?? payment?.booking_id ?? payment?.booking?.id ?? payment?.booking?.bookingId;
+}
+
+function paymentBelongsToBooking(payment, bookingId) {
+  const paymentBookingId = getPaymentBookingId(payment);
+  return paymentBookingId != null && bookingId != null && String(paymentBookingId) === String(bookingId);
+}
+
+function indexPaymentsByBooking(payments) {
+  return Object.fromEntries(
+    payments
+      .map((payment) => [getPaymentBookingId(payment), payment])
+      .filter(([bookingId]) => bookingId != null)
+  );
+}
+
+function normalizePaymentForBooking(bookingId, payment, paymentMethod) {
+  const value = payment || {};
+  return {
+    ...value,
+    bookingId: value.bookingId ?? value.booking_id ?? bookingId,
+    paymentMethod: value.paymentMethod ?? value.method ?? paymentMethod,
+    status: value.status ?? "PAID",
+  };
+}
+
 function ReviewForm({ bookingId }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
@@ -1433,6 +1487,7 @@ function PaymentPanel({
   invoiceDownloading,
   customer,
   onPaymentCreated,
+  onPaymentAlreadyExists,
   onViewInvoice,
   onDownloadInvoice,
 }) {
@@ -1446,16 +1501,23 @@ function PaymentPanel({
     try {
       if (paymentMethod === "CASH") {
         const response = await createPayment(booking.bookingId, paymentMethod);
-        await onPaymentCreated(response?.payment || response?.data || response);
+        await onPaymentCreated(response?.payment || response?.data || response, paymentMethod);
       } else {
         const response = await payWithRazorpay({
           bookingId: booking.bookingId,
           paymentMethod,
           customer,
         });
-        await onPaymentCreated(response?.payment || response?.data?.payment || response?.data || response);
+        await onPaymentCreated(
+          response?.payment || response?.data?.payment || response?.data || response,
+          paymentMethod
+        );
       }
     } catch (err) {
+      if (err.status === 409) {
+        await onPaymentAlreadyExists();
+        return;
+      }
       setError(err.message || "Payment cancelled or failed");
     } finally {
       setSubmitting(false);

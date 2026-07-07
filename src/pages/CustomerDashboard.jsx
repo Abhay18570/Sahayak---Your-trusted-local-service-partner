@@ -205,7 +205,7 @@ export default function CustomerDashboard() {
     setSelectedProvider(provider);
   };
 
-  const handleConfirmBooking = async (paymentMethod, scheduledAt) => {
+  const handleConfirmBooking = async (paymentMethod, scheduledAt, serviceAddress) => {
     const provider = selectedProvider;
     if (!provider) return;
 
@@ -218,7 +218,7 @@ export default function CustomerDashboard() {
         providerId: provider.providerId,
         providerServiceId: provider.providerServiceId ?? provider.id,
         description: `${provider.category} service request`,
-        serviceAddress: user?.locality || locality || provider.locality,
+        serviceAddress,
         scheduledAt,
         quotedAmount: provider.price,
       });
@@ -466,6 +466,12 @@ export default function CustomerDashboard() {
           <BookingConfirmationModal
             key={selectedProvider.id}
             provider={selectedProvider}
+            initialAddress={{
+              locality: user?.locality || locality || selectedProvider.locality || "",
+              city: user?.city || city || "",
+              state: user?.state || "",
+              pincode: user?.pincode || "",
+            }}
             error={bookingError}
             submitting={confirmingBooking}
             onSlotChange={() => setBookingError("")}
@@ -1143,6 +1149,7 @@ function RecommendedCard({ provider: p, onBook }) {
 
 function BookingConfirmationModal({
   provider,
+  initialAddress,
   error,
   submitting,
   onClose,
@@ -1152,6 +1159,16 @@ function BookingConfirmationModal({
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [bookingDate, setBookingDate] = useState(getTomorrowDate());
   const [bookingTime, setBookingTime] = useState("09:00");
+  const [serviceAddressFields, setServiceAddressFields] = useState(() => ({
+    house: "",
+    building: "",
+    locality: initialAddress?.locality || "",
+    city: initialAddress?.city || "",
+    state: initialAddress?.state || "",
+    pincode: initialAddress?.pincode || "",
+    landmark: "",
+  }));
+  const [addressError, setAddressError] = useState("");
   const [availability, setAvailability] = useState([]);
 
   useEffect(() => {
@@ -1183,9 +1200,26 @@ function BookingConfirmationModal({
     onSlotChange();
   };
 
+  const updateAddressField = (field, value) => {
+    setServiceAddressFields((current) => ({ ...current, [field]: value }));
+    setAddressError("");
+  };
+
   const confirmBooking = () => {
     if (!bookingDate || !bookingTime) return;
-    onConfirm(paymentMethod, `${bookingDate}T${bookingTime}:00`);
+    const requiredFields = ["house", "locality", "city", "state", "pincode"];
+    const missingField = requiredFields.find((field) => !serviceAddressFields[field].trim());
+
+    if (missingField) {
+      setAddressError("House / Flat No, Locality, City, State and Pincode are required.");
+      return;
+    }
+
+    onConfirm(
+      paymentMethod,
+      `${bookingDate}T${bookingTime}:00`,
+      buildServiceAddress(serviceAddressFields)
+    );
   };
 
   return (
@@ -1274,6 +1308,108 @@ function BookingConfirmationModal({
           )}
         </div>
 
+        <div className="booking-address-section">
+          <h6>Service address</h6>
+          {addressError && (
+            <div className="auth-alert auth-alert-error" role="alert">
+              {addressError}
+            </div>
+          )}
+          <div className="booking-address-fields">
+            <div className="form-field-group">
+              <label htmlFor="booking-house">House / Flat No</label>
+              <div className="input-with-icon">
+                <ToolIcon name="pin" size={17} />
+                <input
+                  id="booking-house"
+                  type="text"
+                  value={serviceAddressFields.house}
+                  onChange={(event) => updateAddressField("house", event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label htmlFor="booking-building">Building / Street</label>
+              <div className="input-with-icon">
+                <ToolIcon name="pin" size={17} />
+                <input
+                  id="booking-building"
+                  type="text"
+                  value={serviceAddressFields.building}
+                  onChange={(event) => updateAddressField("building", event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label htmlFor="booking-locality">Locality</label>
+              <div className="input-with-icon">
+                <ToolIcon name="pin" size={17} />
+                <input
+                  id="booking-locality"
+                  type="text"
+                  value={serviceAddressFields.locality}
+                  onChange={(event) => updateAddressField("locality", event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label htmlFor="booking-city">City</label>
+              <div className="input-with-icon">
+                <ToolIcon name="pin" size={17} />
+                <input
+                  id="booking-city"
+                  type="text"
+                  value={serviceAddressFields.city}
+                  onChange={(event) => updateAddressField("city", event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label htmlFor="booking-state">State</label>
+              <div className="input-with-icon">
+                <ToolIcon name="pin" size={17} />
+                <input
+                  id="booking-state"
+                  type="text"
+                  value={serviceAddressFields.state}
+                  onChange={(event) => updateAddressField("state", event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+            <div className="form-field-group">
+              <label htmlFor="booking-pincode">Pincode</label>
+              <div className="input-with-icon">
+                <ToolIcon name="pin" size={17} />
+                <input
+                  id="booking-pincode"
+                  type="text"
+                  value={serviceAddressFields.pincode}
+                  onChange={(event) => updateAddressField("pincode", event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+            <div className="form-field-group booking-landmark-field">
+              <label htmlFor="booking-landmark">Landmark</label>
+              <div className="input-with-icon">
+                <ToolIcon name="pin" size={17} />
+                <input
+                  id="booking-landmark"
+                  type="text"
+                  value={serviceAddressFields.landmark}
+                  onChange={(event) => updateAddressField("landmark", event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="booking-payment-choice">
           <h6>Payment method</h6>
           <div className="booking-payment-methods">
@@ -1326,6 +1462,26 @@ function getTomorrowDate() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const offset = tomorrow.getTimezoneOffset() * 60 * 1000;
   return new Date(tomorrow.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function buildServiceAddress(fields) {
+  const house = fields.house.trim();
+  const building = fields.building.trim();
+  const locality = fields.locality.trim();
+  const city = fields.city.trim();
+  const state = fields.state.trim();
+  const pincode = fields.pincode.trim();
+  const landmark = fields.landmark.trim();
+  const addressParts = [house, building, locality, city].filter(Boolean);
+
+  if (state || pincode) {
+    addressParts.push([state, pincode].filter(Boolean).join(" - "));
+  }
+  if (landmark) {
+    addressParts.push(`Landmark: ${landmark}`);
+  }
+
+  return addressParts.join(", ");
 }
 
 function normalizeAvailability(response) {

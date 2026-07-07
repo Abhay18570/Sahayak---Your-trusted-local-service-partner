@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
 import ProviderAvatar from "../components/ProviderAvatar";
@@ -19,7 +19,13 @@ import {
   getProviderServiceAreas,
   uploadProviderImage,
 } from "../api/providerApi";
-import { getProviderWallet } from "../api/walletApi";
+import {
+  getProviderBankDetails,
+  getProviderWallet,
+  getProviderWithdrawals,
+  saveProviderBankDetails,
+  withdrawProviderAmount,
+} from "../api/providerWalletApi";
 import { getMaskedAadhaar } from "../utils/providerKyc";
 
 export default function ProviderDashboard() {
@@ -33,6 +39,12 @@ export default function ProviderDashboard() {
   const [wallet, setWallet] = useState(null);
   const [walletLoading, setWalletLoading] = useState(true);
   const [walletError, setWalletError] = useState("");
+  const [bankDetails, setBankDetails] = useState(null);
+  const [bankDetailsLoading, setBankDetailsLoading] = useState(true);
+  const [bankDetailsError, setBankDetailsError] = useState("");
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
+  const [withdrawalsError, setWithdrawalsError] = useState("");
   const [serviceAreas, setServiceAreas] = useState([]);
   const [serviceAreasLoading, setServiceAreasLoading] = useState(true);
   const [serviceAreasError, setServiceAreasError] = useState("");
@@ -112,7 +124,7 @@ export default function ProviderDashboard() {
       .finally(() => setEarningsLoading(false));
   }, [providerId]);
 
-  useEffect(() => {
+  const loadWallet = useCallback(async () => {
     if (!providerId) {
       setWalletError("Your provider account ID is missing.");
       setWalletLoading(false);
@@ -121,13 +133,63 @@ export default function ProviderDashboard() {
 
     setWalletLoading(true);
     setWalletError("");
-    getProviderWallet(providerId)
-      .then((response) => setWallet(response?.data || response))
-      .catch((err) =>
-        setWalletError(err.message || "Unable to load your wallet summary.")
-      )
-      .finally(() => setWalletLoading(false));
+    try {
+      const response = await getProviderWallet(providerId);
+      setWallet(response?.data || response);
+    } catch (err) {
+      setWalletError(err.message || "Unable to load your wallet summary.");
+    } finally {
+      setWalletLoading(false);
+    }
   }, [providerId]);
+
+  const loadBankDetails = useCallback(async () => {
+    if (!providerId) {
+      setBankDetailsError("Your provider account ID is missing.");
+      setBankDetailsLoading(false);
+      return;
+    }
+
+    setBankDetailsLoading(true);
+    setBankDetailsError("");
+    try {
+      const response = await getProviderBankDetails(providerId);
+      setBankDetails(response?.data || response || null);
+    } catch (err) {
+      setBankDetails(null);
+      if (!err.status || err.status !== 404) {
+        setBankDetailsError(err.message || "Unable to load your bank details.");
+      }
+    } finally {
+      setBankDetailsLoading(false);
+    }
+  }, [providerId]);
+
+  const loadWithdrawals = useCallback(async () => {
+    if (!providerId) {
+      setWithdrawalsError("Your provider account ID is missing.");
+      setWithdrawalsLoading(false);
+      return;
+    }
+
+    setWithdrawalsLoading(true);
+    setWithdrawalsError("");
+    try {
+      const response = await getProviderWithdrawals(providerId);
+      setWithdrawals(unwrapList(response));
+    } catch (err) {
+      setWithdrawals([]);
+      setWithdrawalsError(err.message || "Unable to load withdrawal history.");
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  }, [providerId]);
+
+  useEffect(() => {
+    loadWallet();
+    loadBankDetails();
+    loadWithdrawals();
+  }, [loadWallet, loadBankDetails, loadWithdrawals]);
 
   useEffect(() => {
     const unresolvedCustomers = [...new Map(
@@ -204,9 +266,21 @@ export default function ProviderDashboard() {
         />
 
         <WalletSummary
+          providerId={providerId}
           wallet={wallet}
           loading={walletLoading}
           error={walletError}
+          bankDetails={bankDetails}
+          bankDetailsLoading={bankDetailsLoading}
+          bankDetailsError={bankDetailsError}
+          withdrawals={withdrawals}
+          withdrawalsLoading={withdrawalsLoading}
+          withdrawalsError={withdrawalsError}
+          onRefreshWallet={loadWallet}
+          onRefreshBankDetails={loadBankDetails}
+          onRefreshWithdrawals={loadWithdrawals}
+          onBankDetailsError={setBankDetailsError}
+          onWithdrawalsError={setWithdrawalsError}
         />
 
         <ServiceAreasSection
@@ -491,13 +565,131 @@ function EarningsSummary({ earnings, loading, error }) {
   );
 }
 
-function WalletSummary({ wallet, loading, error }) {
+function WalletSummary({
+  providerId,
+  wallet,
+  loading,
+  error,
+  bankDetails,
+  bankDetailsLoading,
+  bankDetailsError,
+  withdrawals,
+  withdrawalsLoading,
+  withdrawalsError,
+  onRefreshWallet,
+  onRefreshBankDetails,
+  onRefreshWithdrawals,
+  onBankDetailsError,
+  onWithdrawalsError,
+}) {
+  const [bankForm, setBankForm] = useState(emptyBankDetailsForm);
+  const [savingBankDetails, setSavingBankDetails] = useState(false);
+  const [bankDetailsMessage, setBankDetailsMessage] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawMessage, setWithdrawMessage] = useState("");
+  const [withdrawError, setWithdrawError] = useState("");
+  const hasSavedBankDetails = hasBankDetails(bankDetails);
+  const withdrawableBalance = Number(wallet?.withdrawableBalance ?? 0);
   const cards = [
     ["Total Earnings", formatCurrency(wallet?.totalEarnings), "star"],
-    ["Pending Earnings", formatCurrency(wallet?.pendingEarnings), "history"],
     ["Withdrawable Balance", formatCurrency(wallet?.withdrawableBalance), "check"],
+    ["Pending Earnings", formatCurrency(wallet?.pendingEarnings), "history"],
     ["Total Paid Jobs", wallet?.totalPaidJobs ?? 0, "wrench"],
   ];
+
+  useEffect(() => {
+    setBankForm({
+      accountHolderName: bankDetails?.accountHolderName || "",
+      bankName: bankDetails?.bankName || "",
+      accountNumber: bankDetails?.accountNumber || "",
+      ifscCode: bankDetails?.ifscCode || "",
+      upiId: bankDetails?.upiId || "",
+    });
+  }, [bankDetails]);
+
+  const handleBankChange = (field, value) => {
+    setBankForm((current) => ({ ...current, [field]: value }));
+    setBankDetailsMessage("");
+  };
+
+  const handleSaveBankDetails = async (event) => {
+    event.preventDefault();
+    onBankDetailsError("");
+    setBankDetailsMessage("");
+
+    const payload = {
+      providerId,
+      accountHolderName: bankForm.accountHolderName.trim(),
+      bankName: bankForm.bankName.trim(),
+      accountNumber: bankForm.accountNumber.trim(),
+      ifscCode: bankForm.ifscCode.trim().toUpperCase(),
+      upiId: bankForm.upiId.trim(),
+    };
+
+    if (!payload.providerId) {
+      onBankDetailsError("Your provider account ID is missing.");
+      return;
+    }
+
+    if (
+      !payload.accountHolderName ||
+      !payload.bankName ||
+      !payload.accountNumber ||
+      !payload.ifscCode
+    ) {
+      onBankDetailsError("Enter account holder name, bank name, account number and IFSC code.");
+      return;
+    }
+
+    setSavingBankDetails(true);
+    try {
+      await saveProviderBankDetails(payload);
+      await onRefreshBankDetails();
+      setBankDetailsMessage("Bank details saved successfully");
+    } catch (err) {
+      onBankDetailsError(err.message || "Unable to save bank details.");
+    } finally {
+      setSavingBankDetails(false);
+    }
+  };
+
+  const handleWithdraw = async (event) => {
+    event.preventDefault();
+    setWithdrawError("");
+    setWithdrawMessage("");
+    onWithdrawalsError("");
+
+    const amount = Number(withdrawAmount);
+    if (!withdrawAmount) {
+      setWithdrawError("Amount is required.");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setWithdrawError("Amount must be greater than 0.");
+      return;
+    }
+    if (amount > withdrawableBalance) {
+      setWithdrawError("Amount cannot exceed withdrawable balance.");
+      return;
+    }
+    if (!hasSavedBankDetails) {
+      setWithdrawError("Add bank details before withdrawal");
+      return;
+    }
+
+    setWithdrawing(true);
+    try {
+      await withdrawProviderAmount({ providerId, amount });
+      setWithdrawAmount("");
+      setWithdrawMessage("Withdrawal successful");
+      await Promise.all([onRefreshWallet(), onRefreshWithdrawals()]);
+    } catch (err) {
+      setWithdrawError(err.message || "Unable to withdraw money.");
+    } finally {
+      setWithdrawing(false);
+    }
+  };
 
   return (
     <section className="provider-wallet-section" aria-labelledby="provider-wallet-title">
@@ -535,6 +727,204 @@ function WalletSummary({ wallet, loading, error }) {
           ))}
         </div>
       ) : null}
+
+      <div className="provider-wallet-layout">
+        <form className="surface-card provider-wallet-form" onSubmit={handleSaveBankDetails}>
+          <div className="provider-wallet-form-head">
+            <h3>Bank details</h3>
+            {!bankDetailsLoading && !hasSavedBankDetails && (
+              <span>Add bank details before withdrawal</span>
+            )}
+          </div>
+
+          {bankDetailsError && (
+            <div className="auth-alert auth-alert-error" role="alert">
+              {bankDetailsError}
+            </div>
+          )}
+          {bankDetailsMessage && (
+            <div className="auth-alert auth-alert-success" role="status">
+              {bankDetailsMessage}
+            </div>
+          )}
+
+          {bankDetailsLoading ? (
+            <div className="provider-earnings-loading" aria-live="polite">
+              Loading bank details...
+            </div>
+          ) : (
+            <>
+              <div className="form-field-group">
+                <label htmlFor="provider-account-holder-name">Account Holder Name</label>
+                <div className="input-with-icon">
+                  <ToolIcon name="user" size={17} />
+                  <input
+                    id="provider-account-holder-name"
+                    type="text"
+                    value={bankForm.accountHolderName}
+                    onChange={(event) =>
+                      handleBankChange("accountHolderName", event.target.value)
+                    }
+                  />
+                </div>
+              </div>
+              <div className="form-field-group">
+                <label htmlFor="provider-bank-name">Bank Name</label>
+                <div className="input-with-icon">
+                  <ToolIcon name="check" size={17} />
+                  <input
+                    id="provider-bank-name"
+                    type="text"
+                    value={bankForm.bankName}
+                    onChange={(event) => handleBankChange("bankName", event.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="form-row-2">
+                <div className="form-field-group">
+                  <label htmlFor="provider-account-number">Account Number</label>
+                  <div className="input-with-icon">
+                    <ToolIcon name="history" size={17} />
+                    <input
+                      id="provider-account-number"
+                      type="text"
+                      value={bankForm.accountNumber}
+                      onChange={(event) =>
+                        handleBankChange("accountNumber", event.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="form-field-group">
+                  <label htmlFor="provider-ifsc-code">IFSC Code</label>
+                  <div className="input-with-icon">
+                    <ToolIcon name="pin" size={17} />
+                    <input
+                      id="provider-ifsc-code"
+                      type="text"
+                      value={bankForm.ifscCode}
+                      onChange={(event) => handleBankChange("ifscCode", event.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="form-field-group">
+                <label htmlFor="provider-upi-id">UPI ID</label>
+                <div className="input-with-icon">
+                  <ToolIcon name="star" size={17} />
+                  <input
+                    id="provider-upi-id"
+                    type="text"
+                    value={bankForm.upiId}
+                    onChange={(event) => handleBankChange("upiId", event.target.value)}
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="btn-sahayak btn-sahayak-teal btn-sm"
+                disabled={savingBankDetails || !providerId}
+              >
+                {savingBankDetails ? "Saving..." : "Save bank details"}
+              </button>
+            </>
+          )}
+        </form>
+
+        <div className="provider-wallet-actions">
+          <form className="surface-card provider-wallet-form" onSubmit={handleWithdraw}>
+            <h3>Withdraw money</h3>
+            {!hasSavedBankDetails && !bankDetailsLoading && (
+              <div className="auth-alert" style={{ background: "var(--teal-100)", color: "var(--teal-700)" }}>
+                Add bank details before withdrawal
+              </div>
+            )}
+            {withdrawError && (
+              <div className="auth-alert auth-alert-error" role="alert">
+                {withdrawError}
+              </div>
+            )}
+            {withdrawMessage && (
+              <div className="auth-alert auth-alert-success" role="status">
+                {withdrawMessage}
+              </div>
+            )}
+            <div className="form-field-group">
+              <label htmlFor="provider-withdraw-amount">Amount</label>
+              <div className="input-with-icon">
+                <ToolIcon name="star" size={17} />
+                <input
+                  id="provider-withdraw-amount"
+                  type="number"
+                  min="1"
+                  max={Number.isFinite(withdrawableBalance) ? withdrawableBalance : undefined}
+                  step="0.01"
+                  value={withdrawAmount}
+                  onChange={(event) => setWithdrawAmount(event.target.value)}
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              className="btn-sahayak btn-sahayak-teal btn-sm"
+              disabled={withdrawing || loading || bankDetailsLoading || !providerId}
+            >
+              {withdrawing ? "Withdrawing..." : "Withdraw money"}
+            </button>
+          </form>
+
+          <div className="surface-card provider-withdrawals-card">
+            <h3>Withdrawal history</h3>
+            {withdrawalsError && (
+              <div className="auth-alert auth-alert-error" role="alert">
+                {withdrawalsError}
+              </div>
+            )}
+            {withdrawalsLoading ? (
+              <div className="provider-earnings-loading" aria-live="polite">
+                Loading withdrawal history...
+              </div>
+            ) : withdrawals.length === 0 ? (
+              <div className="empty-state provider-wallet-empty">
+                <ToolIcon name="history" size={30} />
+                <h5>No withdrawals yet</h5>
+              </div>
+            ) : (
+              <div className="booking-table-wrap provider-withdrawals-table-wrap">
+                <table className="booking-table">
+                  <thead>
+                    <tr>
+                      <th>Amount</th>
+                      <th>Bank Name</th>
+                      <th>Account Number</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {withdrawals.map((withdrawal) => {
+                      const status = String(withdrawal.status || "").toLowerCase();
+                      return (
+                        <tr key={withdrawal.id ?? `${withdrawal.createdAt}-${withdrawal.amount}`}>
+                          <td>{formatCurrency(withdrawal.amount)}</td>
+                          <td>{withdrawal.bankName || "-"}</td>
+                          <td>{withdrawal.accountNumber || "-"}</td>
+                          <td>
+                            <span className={`status-badge ${status || "pending"}`}>
+                              {formatStatus(withdrawal.status)}
+                            </span>
+                          </td>
+                          <td>{formatDateTime(withdrawal.createdAt)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -546,6 +936,10 @@ function BookingRequestCard({ booking, customerName, updating, onStatusChange })
   const [uploading, setUploading] = useState(false);
   const [proofError, setProofError] = useState("");
   const [proofMessage, setProofMessage] = useState("");
+  const serviceAddress = booking.serviceAddress || "";
+  const mapsUrl = serviceAddress
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(serviceAddress)}`
+    : "";
   const availableActions = {
     REQUESTED: ["ACCEPTED", "CANCELLED"],
     ACCEPTED: ["CANCELLED"],
@@ -653,7 +1047,19 @@ function BookingRequestCard({ booking, customerName, updating, onStatusChange })
         <strong>Customer:</strong>{" "}
         {customerName || (booking.customerId != null ? `Customer #${booking.customerId}` : "Customer")}
       </p>
-      <p><strong>Address:</strong> {booking.serviceAddress || "Not provided"}</p>
+      <div className="provider-booking-address">
+        <p><strong>Address:</strong> {serviceAddress || "Not provided"}</p>
+        {mapsUrl && (
+          <a
+            className="btn-sahayak btn-sahayak-outline btn-sm"
+            href={mapsUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open in Maps
+          </a>
+        )}
+      </div>
       <p><strong>Scheduled:</strong> {formatDateTime(booking.scheduledAt)}</p>
       <p><strong>Quoted amount:</strong> ₹{booking.quotedAmount ?? 0}</p>
       {booking.status === "ACCEPTED" && (
@@ -735,6 +1141,26 @@ function CompletionProofGallery({ images }) {
         ))}
       </div>
     </div>
+  );
+}
+
+const emptyBankDetailsForm = {
+  accountHolderName: "",
+  bankName: "",
+  accountNumber: "",
+  ifscCode: "",
+  upiId: "",
+};
+
+function hasBankDetails(bankDetails) {
+  if (!bankDetails || typeof bankDetails !== "object") return false;
+
+  return Boolean(
+    bankDetails.accountHolderName ||
+      bankDetails.bankName ||
+      bankDetails.accountNumber ||
+      bankDetails.ifscCode ||
+      bankDetails.upiId
   );
 }
 

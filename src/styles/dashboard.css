@@ -476,6 +476,64 @@
   min-width: 0;
 }
 
+.provider-wallet-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  margin-top: 1rem;
+}
+
+.provider-wallet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.provider-wallet-form,
+.provider-withdrawals-card {
+  padding: 1.25rem;
+}
+
+.provider-wallet-form h3,
+.provider-withdrawals-card h3 {
+  font-size: 1.05rem;
+  margin-bottom: 1rem;
+}
+
+.provider-wallet-form-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.provider-wallet-form-head h3 {
+  margin-bottom: 0;
+}
+
+.provider-wallet-form-head span {
+  color: var(--teal-700);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.provider-wallet-form .auth-alert,
+.provider-withdrawals-card .auth-alert {
+  margin-bottom: 1rem;
+}
+
+.provider-withdrawals-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.provider-wallet-empty {
+  padding: 2rem 1rem;
+}
+
 .provider-earnings-loading {
   color: var(--ink-500);
   padding: 1.5rem;
@@ -792,6 +850,8 @@
 
 .booking-modal {
   width: min(100%, 560px);
+  max-height: calc(100vh - 2.5rem);
+  overflow-y: auto;
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -882,6 +942,47 @@
   margin-top: 0.18rem;
 }
 
+.booking-address-section {
+  margin-top: 1.4rem;
+}
+
+.booking-address-section h6 {
+  margin-bottom: 0.7rem;
+}
+
+.booking-address-section .auth-alert {
+  margin-bottom: 0.8rem;
+}
+
+.booking-address-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.booking-address-fields .form-field-group {
+  margin-bottom: 0;
+}
+
+.booking-landmark-field {
+  grid-column: 1 / -1;
+}
+
+.provider-booking-address {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.8rem;
+  justify-content: space-between;
+}
+
+.provider-booking-address p {
+  margin-bottom: 0;
+}
+
+.provider-booking-address .btn-sahayak {
+  flex: none;
+}
+
 .booking-payment-choice {
   margin-top: 1.4rem;
 }
@@ -927,6 +1028,7 @@
   .admin-metric-grid { grid-template-columns: repeat(2, 1fr); }
   .provider-earnings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .provider-wallet-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .provider-wallet-layout { grid-template-columns: 1fr; }
   .provider-service-areas-layout { grid-template-columns: 1fr; }
 }
 
@@ -934,10 +1036,14 @@
   .admin-metric-grid { grid-template-columns: 1fr; }
   .provider-earnings-grid { grid-template-columns: 1fr; }
   .provider-wallet-grid { grid-template-columns: 1fr; }
+  .provider-wallet-form-head { flex-direction: column; }
+  .provider-wallet-form-head span { text-align: left; }
   .customer-profile-grid { grid-template-columns: 1fr; }
   .customer-profile-actions .btn-sahayak { width: 100%; }
   .provider-service-area-card { align-items: stretch; flex-direction: column; }
   .provider-service-area-card .btn-sahayak { width: 100%; }
   .booking-slot-fields { grid-template-columns: 1fr; }
+  .booking-address-fields { grid-template-columns: 1fr; }
+  .provider-booking-address { flex-direction: column; }
   .booking-invoice-details { grid-template-columns: 1fr; }
 }

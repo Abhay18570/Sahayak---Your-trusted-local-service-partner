@@ -1,11 +1,15 @@
 .dashboard-page {
-  background: var(--paper-dim);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(249, 115, 22, 0.08), transparent 28%),
+    linear-gradient(180deg, #ffffff, #fff7ed);
   min-height: calc(100vh - 72px);
   padding: 2.5rem 0 4rem;
+  animation: sahayakFadeIn var(--motion-slow) both;
 }
 
 .dashboard-header {
   margin-bottom: 1.8rem;
+  animation: sahayakFadeUp 420ms ease both;
 }
 .dashboard-header h1 {
   font-size: 1.7rem;
@@ -23,6 +27,7 @@
   border-bottom: 1px solid var(--line);
 }
 .dashboard-tab {
+  position: relative;
   padding: 0.7rem 1.1rem;
   font-size: 0.92rem;
   font-weight: 600;
@@ -36,6 +41,21 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  transition: color var(--motion-fast), transform var(--motion-fast);
+}
+
+.dashboard-tab::after {
+  background: linear-gradient(90deg, var(--marigold-600), var(--marigold-700));
+  border-radius: 999px;
+  bottom: -1px;
+  content: "";
+  height: 2px;
+  left: 0;
+  position: absolute;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform var(--motion-med);
+  width: 100%;
 }
 .dashboard-tab.active {
   color: var(--teal-700);
@@ -43,6 +63,13 @@
 }
 .dashboard-tab:hover:not(.active) {
   color: var(--ink-900);
+  transform: translateY(-1px);
+}
+
+.dashboard-tab:hover::after,
+.dashboard-tab.active::after {
+  transform: scaleX(1);
+  transform-origin: left;
 }
 
 .dashboard-search-bar {
@@ -55,6 +82,14 @@
   gap: 0.8rem;
   margin-bottom: 1.6rem;
   box-shadow: var(--shadow-sm);
+  animation: sahayakFadeUp 460ms ease both;
+  transition: box-shadow var(--motion-med), transform var(--motion-med), border-color var(--motion-med);
+}
+
+.dashboard-search-bar:hover {
+  border-color: rgba(249, 115, 22, 0.28);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .dashboard-layout {
@@ -71,6 +106,14 @@
   padding: 1.4rem;
   position: sticky;
   top: 96px;
+  animation: sahayakFadeUp 480ms ease both;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--motion-med), border-color var(--motion-med);
+}
+
+.filter-panel:hover {
+  border-color: rgba(249, 115, 22, 0.28);
+  box-shadow: var(--shadow-md);
 }
 
 .filter-panel-head {
@@ -92,6 +135,12 @@
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
+  transition: color var(--motion-fast), transform var(--motion-fast);
+}
+
+.filter-panel-head button:hover {
+  color: var(--teal-900);
+  transform: translateY(-1px);
 }
 
 .filter-group {
@@ -119,6 +168,11 @@
   font-size: 0.88rem;
   color: var(--ink-700);
   cursor: pointer;
+  transition: color var(--motion-fast), transform var(--motion-fast);
+}
+.filter-checkbox:hover {
+  color: var(--teal-700);
+  transform: translateX(2px);
 }
 .filter-checkbox input { accent-color: var(--teal-700); }
 
@@ -131,6 +185,11 @@
   border-radius: 6px;
   font-size: 0.86rem;
   color: var(--ink-700);
+  transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+}
+.filter-rating-row:hover {
+  background: rgba(228, 237, 231, 0.7);
+  transform: translateX(2px);
 }
 .filter-rating-row.active {
   background: var(--teal-100);
@@ -168,6 +227,13 @@
   padding: 0.45rem 0.7rem;
   font-size: 0.85rem;
   background: var(--white);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.results-meta select:focus {
+  border-color: var(--teal-600);
+  box-shadow: var(--focus-ring);
+  outline: none;
 }
 
 .dashboard-provider-list {
@@ -185,12 +251,18 @@
   grid-template-columns: auto 1fr auto;
   gap: 1.2rem;
   align-items: center;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  animation: sahayakFadeUp 420ms ease both;
+  transition: box-shadow var(--motion-med), border-color var(--motion-med), transform var(--motion-med);
 }
 .dashboard-provider-card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-hover);
   border-color: var(--teal-600);
+  transform: translateY(-3px);
 }
+
+.dashboard-provider-card:nth-child(2) { animation-delay: 70ms; }
+.dashboard-provider-card:nth-child(3) { animation-delay: 140ms; }
+.dashboard-provider-card:nth-child(4) { animation-delay: 210ms; }
 
 .dp-avatar {
   width: 58px;
@@ -205,6 +277,15 @@
   justify-content: center;
   font-size: 1.1rem;
   flex: none;
+  transition: transform var(--motion-med), background var(--motion-med), color var(--motion-med);
+}
+
+.dashboard-provider-card:hover .dp-avatar,
+.provider-booking-card:hover .dp-avatar,
+.provider-kyc-summary:hover .dp-avatar {
+  background: var(--marigold-100);
+  color: var(--marigold-700);
+  transform: scale(1.04);
 }
 
 .provider-avatar-shell {
@@ -310,6 +391,7 @@
 @media (max-width: 700px) {
   .dashboard-provider-card {
     grid-template-columns: auto 1fr;
+    padding: 1.1rem;
   }
   .dp-actions {
     grid-column: 1 / -1;
@@ -343,6 +425,14 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   overflow: hidden;
+  animation: sahayakFadeUp 440ms ease both;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--motion-med), border-color var(--motion-med);
+}
+
+.booking-table-wrap:hover {
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .booking-table {
@@ -354,8 +444,8 @@
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--ink-500);
-  background: var(--paper-dim);
+  color: var(--teal-900);
+  background: linear-gradient(180deg, #fff7ed, #ffedd5);
   padding: 0.85rem 1.1rem;
   font-weight: 700;
 }
@@ -364,9 +454,11 @@
   font-size: 0.9rem;
   border-top: 1px solid var(--line);
   color: var(--ink-700);
+  transition: background var(--motion-fast), color var(--motion-fast);
 }
 .booking-table tr:hover td {
-  background: var(--paper-dim);
+  background: #fff7ed;
+  color: var(--ink-900);
 }
 
 .status-badge {
@@ -377,15 +469,22 @@
   font-weight: 600;
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast), background var(--motion-fast);
 }
-.status-badge.completed { background: #e3f3e8; color: var(--success); }
-.status-badge.cancelled { background: #fbe7e3; color: var(--danger); }
+
+.status-badge:hover {
+  transform: translateY(-1px);
+}
+.status-badge.completed { background: #dcfce7; color: #15803d; }
+.status-badge.cancelled { background: #f3f4f6; color: #4b5563; }
 .status-badge.upcoming { background: var(--teal-100); color: var(--teal-700); }
+.status-badge.rejected { background: #fee2e2; color: var(--danger); }
 
 .empty-state {
   text-align: center;
   padding: 3.5rem 1.5rem;
   color: var(--ink-500);
+  animation: sahayakFadeUp 420ms ease both;
 }
 .empty-state svg {
   color: var(--ink-300);
@@ -413,18 +512,50 @@
   align-items: center;
   gap: 0.9rem;
   box-shadow: var(--shadow-sm);
+  animation: sahayakFadeUp 420ms ease both;
+  transition: transform var(--motion-med), box-shadow var(--motion-med), border-color var(--motion-med);
+  overflow: hidden;
+  position: relative;
+}
+
+.admin-metric-card:hover {
+  border-color: rgba(249, 115, 22, 0.34);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-4px);
+}
+
+.admin-metric-card:nth-child(2) { animation-delay: 70ms; }
+.admin-metric-card:nth-child(3) { animation-delay: 140ms; }
+.admin-metric-card:nth-child(4) { animation-delay: 210ms; }
+
+.admin-metric-card::before {
+  background: linear-gradient(180deg, #f97316, #fed7aa);
+  content: "";
+  height: 100%;
+  left: 0;
+  opacity: 0.9;
+  position: absolute;
+  top: 0;
+  width: 4px;
 }
 
 .admin-metric-icon {
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: var(--teal-100);
+  background: linear-gradient(135deg, #fed7aa, #fff7ed);
   color: var(--teal-700);
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
+  transition: background var(--motion-med), color var(--motion-med), transform var(--motion-med);
+}
+
+.admin-metric-card:hover .admin-metric-icon {
+  background: var(--marigold-100);
+  color: var(--marigold-700);
+  transform: rotate(-3deg) scale(1.04);
 }
 
 .admin-metric-card strong,
@@ -453,6 +584,7 @@
 
 .provider-section-heading {
   margin-bottom: 1rem;
+  animation: sahayakFadeUp 380ms ease both;
 }
 
 .provider-section-heading h2 {
@@ -474,6 +606,13 @@
 
 .provider-wallet-card {
   min-width: 0;
+  background:
+    linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(255, 255, 255, 0.92)),
+    var(--white);
+}
+
+.provider-wallet-card strong {
+  color: #c2410c;
 }
 
 .provider-wallet-layout {
@@ -571,6 +710,7 @@
   gap: 1rem;
   justify-content: space-between;
   padding: 1rem 1.15rem;
+  animation: sahayakFadeUp 360ms ease both;
 }
 
 .provider-service-area-card strong,
@@ -599,6 +739,7 @@
 
 .customer-profile-card {
   padding: 1.5rem;
+  animation: sahayakFadeUp 420ms ease both;
 }
 
 .customer-profile-grid {
@@ -652,25 +793,34 @@
 }
 
 .btn-sahayak-reject:hover {
-  background: #fbe7e3;
+  background: #fee2e2;
   border-color: var(--danger);
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.14);
 }
 
 .status-badge.requested,
 .status-badge.accepted,
 .status-badge.pending,
-.status-badge.work_done { background: var(--teal-100); color: var(--teal-700); }
+.status-badge.work_done { background: #ffedd5; color: #c2410c; }
+
+.status-badge.requested,
+.status-badge.accepted,
+.status-badge.pending,
+.status-badge.work_done,
+.status-badge.active {
+  animation: sahayakPulseSoft 2.8s ease-in-out infinite;
+}
 
 .status-badge.paid,
-.status-badge.success { background: #e3f3e8; color: var(--success); }
+.status-badge.success { background: #dcfce7; color: #15803d; }
 
 .status-badge.active {
-  background: #e3f3e8;
-  color: var(--success);
+  background: #dcfce7;
+  color: #15803d;
 }
 
 .status-badge.disabled {
-  background: #fbe7e3;
+  background: #fee2e2;
   color: var(--danger);
 }
 
@@ -703,6 +853,13 @@
   gap: 0.8rem;
   margin-top: 0.8rem;
   padding: 0.7rem;
+  transition: transform var(--motion-med), box-shadow var(--motion-med), border-color var(--motion-med);
+}
+
+.completion-proof-card:hover {
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
 }
 
 .completion-proof-card img {
@@ -723,6 +880,12 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 0.85rem;
+  transition: border-color var(--motion-med), box-shadow var(--motion-med);
+}
+
+.completion-proof-gallery:hover {
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .completion-proof-gallery > strong {
@@ -742,6 +905,12 @@
   height: 110px;
   object-fit: cover;
   width: 145px;
+  transition: transform var(--motion-med), box-shadow var(--motion-med);
+}
+
+.completion-proof-gallery img:hover {
+  box-shadow: var(--shadow-sm);
+  transform: scale(1.03);
 }
 
 .booking-payment-panel,
@@ -779,8 +948,16 @@
 .booking-invoice-details div {
   background: var(--paper-dim);
   border: 1px solid var(--line);
+  border-left: 3px solid var(--marigold-600);
   border-radius: var(--radius-sm);
   padding: 0.65rem 0.75rem;
+  transition: border-color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.booking-invoice-details div:hover {
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .booking-invoice-details span,
@@ -807,10 +984,14 @@
 
 .admin-invoice-summary {
   align-items: center;
+  background:
+    linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(255, 255, 255, 0.92)),
+    var(--white);
   display: flex;
   gap: 0.9rem;
   padding: 1.1rem;
   width: min(100%, 360px);
+  animation: sahayakFadeUp 420ms ease both;
 }
 
 .admin-invoice-summary strong,
@@ -841,11 +1022,12 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(7, 38, 33, 0.66);
+  background: rgba(31, 41, 55, 0.58);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
+  animation: sahayakFadeIn 180ms ease both;
 }
 
 .booking-modal {
@@ -857,6 +1039,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   padding: 1.8rem;
+  animation: sahayakScaleIn 220ms ease both;
 }
 
 .booking-modal h2 {
@@ -872,6 +1055,13 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 1rem;
+  transition: border-color var(--motion-med), box-shadow var(--motion-med), transform var(--motion-med);
+}
+
+.booking-modal-provider:hover {
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .booking-modal-provider > div:nth-child(2) {
@@ -918,13 +1108,14 @@
 
 .booking-availability {
   align-items: flex-start;
-  background: var(--teal-100);
+  background: #fff7ed;
   border-radius: var(--radius-sm);
   color: var(--teal-900);
   display: flex;
   gap: 0.55rem;
   margin-top: 0.9rem;
   padding: 0.75rem 0.85rem;
+  animation: sahayakFadeUp 260ms ease both;
 }
 
 .booking-availability svg {
@@ -1005,12 +1196,52 @@
   color: var(--ink-500);
   font-weight: 700;
   cursor: pointer;
+  transition: border-color var(--motion-fast), background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.booking-payment-methods label:hover {
+  border-color: rgba(249, 115, 22, 0.34);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
 }
 
 .booking-payment-methods label.active {
   border-color: var(--teal-700);
   background: var(--teal-100);
   color: var(--teal-700);
+  box-shadow: var(--shadow-sm);
+}
+
+.provider-booking-card,
+.recommended-strip .provider-card,
+.admin-invoices-section .surface-card,
+.booking-payment-panel,
+.booking-payment-status,
+.booking-invoice-status {
+  animation: sahayakFadeUp 420ms ease both;
+}
+
+.provider-earnings-loading,
+.empty-state.surface-card {
+  overflow: hidden;
+  position: relative;
+}
+
+.provider-earnings-loading::after,
+.empty-state.surface-card::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.66),
+    transparent
+  );
+  background-size: 220% 100%;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-100%);
+  animation: sahayakShimmer 1.6s ease-in-out infinite;
 }
 
 .booking-payment-methods input {
@@ -1033,6 +1264,16 @@
 }
 
 @media (max-width: 520px) {
+  .dashboard-page { padding-top: 1.8rem; }
+  .dashboard-tabs {
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+  }
+  .dashboard-tab {
+    flex: none;
+    padding: 0.7rem 0.85rem;
+  }
   .admin-metric-grid { grid-template-columns: 1fr; }
   .provider-earnings-grid { grid-template-columns: 1fr; }
   .provider-wallet-grid { grid-template-columns: 1fr; }
@@ -1046,4 +1287,13 @@
   .booking-address-fields { grid-template-columns: 1fr; }
   .provider-booking-address { flex-direction: column; }
   .booking-invoice-details { grid-template-columns: 1fr; }
+  .booking-modal {
+    padding: 1.25rem;
+  }
+  .booking-modal-actions {
+    flex-direction: column-reverse;
+  }
+  .booking-modal-actions .btn-sahayak {
+    width: 100%;
+  }
 }

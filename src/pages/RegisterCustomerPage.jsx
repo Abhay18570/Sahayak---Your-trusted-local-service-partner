@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
 import { useAuth } from "../context/AuthContext";
+import logo from "../sahayak_logo/Sahayak_logo.png";
 import {
   hasValidationErrors,
   sanitizeMobileNumber,
@@ -65,20 +66,28 @@ export default function RegisterCustomerPage() {
     <div className="auth-page">
       <aside className="auth-side">
         <div>
-          <span className="eyebrow on-dark">Join as a customer</span>
-          <h2>Stop asking around for "a good electrician." Start here.</h2>
+          <div className="auth-side-visual">
+            <span className="auth-side-logo">
+              <img src={logo} alt="Sahayak" />
+            </span>
+            <div>
+              <span className="eyebrow on-dark">Join Sahayak</span>
+              <h2>Join Sahayak today</h2>
+              <p>Create your account and connect with verified local service providers.</p>
+            </div>
+          </div>
           <div className="auth-side-points">
             <div className="auth-side-point">
-              <ToolIcon name="search" size={18} />
-              <span>Search any service by category, locality, rating or price.</span>
+              <ToolIcon name="shield" size={18} />
+              <span>Verified professionals</span>
             </div>
             <div className="auth-side-point">
               <ToolIcon name="history" size={18} />
-              <span>Keep a running history of every booking, receipt and rating.</span>
+              <span>Fast booking</span>
             </div>
             <div className="auth-side-point">
               <ToolIcon name="check" size={18} />
-              <span>Pay only after the work is done — no advance required.</span>
+              <span>Secure payments</span>
             </div>
           </div>
         </div>

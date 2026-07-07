@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
 import { useAuth } from "../context/AuthContext";
+import logo from "../sahayak_logo/Sahayak_logo.png";
 import { getCategories } from "../api/categoryApi";
 import { unwrapList } from "../api/normalizers";
 import {
@@ -313,20 +314,28 @@ export default function RegisterProviderPage() {
     <div className="auth-page">
       <aside className="auth-side">
         <div>
-          <span className="eyebrow on-dark">Join as a provider</span>
-          <h2>Your tools, your hours, more customers.</h2>
+          <div className="auth-side-visual">
+            <span className="auth-side-logo">
+              <img src={logo} alt="Sahayak" />
+            </span>
+            <div>
+              <span className="eyebrow on-dark">Join Sahayak</span>
+              <h2>Join Sahayak today</h2>
+              <p>Create your account and connect with verified local service providers.</p>
+            </div>
+          </div>
           <div className="auth-side-points">
             <div className="auth-side-point">
-              <ToolIcon name="calendar" size={18} />
-              <span>Set your own availability — accept jobs that fit your schedule.</span>
+              <ToolIcon name="shield" size={18} />
+              <span>Verified professionals</span>
             </div>
             <div className="auth-side-point">
-              <ToolIcon name="shield" size={18} />
-              <span>Verified badge after a quick ID check builds customer trust fast.</span>
+              <ToolIcon name="calendar" size={18} />
+              <span>Fast booking</span>
             </div>
             <div className="auth-side-point">
               <ToolIcon name="star" size={18} />
-              <span>Top-rated providers get featured on the homepage every week.</span>
+              <span>Secure payments</span>
             </div>
           </div>
         </div>

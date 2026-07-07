@@ -1,35 +1,32 @@
 /* ===================================================================
    SAHAYAK DESIGN TOKENS
-   Palette: rooted in tools, trust, and Indian craft warmth.
-   - Deep teal: trust, the "verified pro" color
-   - Marigold: warmth, energy, the accent of the working day
-   - Paper: warm off-white, not stark white
-   - Ink: charcoal, not pure black
-   - Sage tint: quiet card surface
+   Premium orange marketplace theme.
+   Existing variable names are preserved so the React UI and component
+   class contracts stay unchanged while the visual system moves to orange.
    =================================================================== */
 
 :root {
-  --teal-900: #0a3e37;
-  --teal-700: #0f5d52;
-  --teal-600: #15715f;
-  --teal-100: #e4ede7;
+  --teal-900: #9a3412;
+  --teal-700: #f97316;
+  --teal-600: #ea580c;
+  --teal-100: #fed7aa;
 
-  --marigold-600: #e8a33d;
-  --marigold-700: #c97f1f;
-  --marigold-100: #fbe9cf;
+  --marigold-600: #f97316;
+  --marigold-700: #ea580c;
+  --marigold-100: #fff7ed;
 
-  --paper: #fbf7f0;
-  --paper-dim: #f3ede2;
-  --ink-900: #1f2622;
-  --ink-700: #3a423d;
-  --ink-500: #6b7570;
-  --ink-300: #a8b0ab;
+  --paper: #ffffff;
+  --paper-dim: #fff7ed;
+  --ink-900: #1f2937;
+  --ink-700: #374151;
+  --ink-500: #6b7280;
+  --ink-300: #9ca3af;
 
-  --line: #ddd5c4;
+  --line: #e5e7eb;
   --white: #ffffff;
 
-  --danger: #b3493b;
-  --success: #2e7d52;
+  --danger: #ef4444;
+  --success: #22c55e;
 
   --font-display: "Space Grotesk", "Segoe UI", sans-serif;
   --font-body: "Inter", "Segoe UI", sans-serif;
@@ -39,9 +36,14 @@
   --radius-md: 10px;
   --radius-lg: 18px;
 
-  --shadow-sm: 0 1px 2px rgba(31, 38, 34, 0.06);
-  --shadow-md: 0 6px 20px rgba(31, 38, 34, 0.08);
-  --shadow-lg: 0 16px 40px rgba(31, 38, 34, 0.14);
+  --shadow-sm: 0 1px 3px rgba(31, 41, 55, 0.07);
+  --shadow-md: 0 8px 24px rgba(249, 115, 22, 0.12);
+  --shadow-lg: 0 18px 46px rgba(31, 41, 55, 0.13);
+  --shadow-hover: 0 16px 36px rgba(249, 115, 22, 0.18);
+  --focus-ring: 0 0 0 4px rgba(249, 115, 22, 0.16);
+  --motion-fast: 0.3s ease;
+  --motion-med: 0.3s ease;
+  --motion-slow: 0.3s ease;
 }
 
 * {
@@ -107,31 +109,41 @@ button {
   border-radius: var(--radius-sm);
   border: 1.5px solid transparent;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 0 0 rgba(31, 38, 34, 0);
+  transform: translateY(0);
+  transition: all 0.3s ease;
   white-space: nowrap;
 }
 
+.btn-sahayak:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
 .btn-sahayak:active {
-  transform: translateY(1px);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(0);
 }
 
 .btn-sahayak-primary {
   background: var(--marigold-600);
-  color: var(--ink-900);
+  color: var(--white);
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.22);
 }
 .btn-sahayak-primary:hover {
   background: var(--marigold-700);
   color: var(--white);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 12px 28px rgba(234, 88, 12, 0.28);
 }
 
 .btn-sahayak-teal {
   background: var(--teal-700);
   color: var(--white);
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.22);
 }
 .btn-sahayak-teal:hover {
-  background: var(--teal-900);
-  box-shadow: var(--shadow-md);
+  background: var(--teal-600);
+  box-shadow: 0 12px 28px rgba(234, 88, 12, 0.28);
 }
 
 .btn-sahayak-outline {
@@ -142,6 +154,7 @@ button {
 .btn-sahayak-outline:hover {
   border-color: var(--teal-700);
   color: var(--teal-700);
+  background: var(--paper-dim);
 }
 
 .btn-sahayak-outline-light {
@@ -162,6 +175,7 @@ button {
 }
 .btn-sahayak-ghost:hover {
   background: var(--teal-100);
+  color: var(--teal-900);
 }
 
 .btn-sahayak.btn-sm {
@@ -176,6 +190,13 @@ button {
 .btn-sahayak:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn-sahayak:disabled:hover {
+  box-shadow: none;
+  transform: none;
 }
 
 /* ---------- Focus visibility ---------- */
@@ -205,6 +226,58 @@ textarea:focus-visible,
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--motion-med),
+    box-shadow var(--motion-med),
+    border-color var(--motion-med),
+    background var(--motion-med);
+}
+
+.surface-card:hover {
+  border-color: rgba(249, 115, 22, 0.38);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+@keyframes sahayakFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sahayakFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sahayakScaleIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sahayakPulseSoft {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(249, 115, 22, 0);
+  }
+}
+
+@keyframes sahayakShimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
 }
 
 .section-pad {

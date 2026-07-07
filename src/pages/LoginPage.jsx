@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { googleCustomerLogin } from "../api/authApi";
 import { dashboardPathForRole } from "../utils/roles";
 import { validateEmail } from "../utils/formValidation";
+import logo from "../sahayak_logo/Sahayak_logo.png";
 
 export default function LoginPage() {
   const [role, setRole] = useState("customer");
@@ -89,20 +90,28 @@ export default function LoginPage() {
     <div className="auth-page">
       <aside className="auth-side">
         <div>
-          <span className="eyebrow on-dark">Welcome back</span>
-          <h2>Pick up right where your last job left off.</h2>
+          <div className="auth-side-visual">
+            <span className="auth-side-logo">
+              <img src={logo} alt="Sahayak" />
+            </span>
+            <div>
+              <span className="eyebrow on-dark">Welcome back</span>
+              <h2>Welcome back to Sahayak</h2>
+              <p>Book trusted local professionals and manage your services in one place.</p>
+            </div>
+          </div>
           <div className="auth-side-points">
             <div className="auth-side-point">
               <ToolIcon name="shield" size={18} />
-              <span>Every provider on Sahayak is ID-verified and background checked.</span>
+              <span>Verified professionals</span>
             </div>
             <div className="auth-side-point">
               <ToolIcon name="calendar" size={18} />
-              <span>Track upcoming bookings and rebook your favourite providers in two taps.</span>
+              <span>Fast booking</span>
             </div>
             <div className="auth-side-point">
               <ToolIcon name="star" size={18} />
-              <span>Rated 4.8/5 by over 40,000 customers across Mumbai &amp; Thane.</span>
+              <span>Secure payments</span>
             </div>
           </div>
         </div>

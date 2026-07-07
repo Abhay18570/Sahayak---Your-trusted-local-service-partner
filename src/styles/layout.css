@@ -3,9 +3,14 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(251, 247, 240, 0.92);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
+  transition: all 0.3s ease;
+}
+
+.sahayak-nav:hover {
+  box-shadow: 0 10px 28px rgba(31, 41, 55, 0.08);
 }
 
 .sahayak-nav-inner {
@@ -22,6 +27,11 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.25rem;
+  transition: transform var(--motion-fast);
+}
+
+.sahayak-brand:hover {
+  transform: translateY(-1px);
 }
 
 .sahayak-brand-mark {
@@ -35,12 +45,24 @@
   border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  transition: transform var(--motion-med), box-shadow var(--motion-med), border-color var(--motion-med);
+}
+
+.sahayak-brand:hover .sahayak-brand-mark {
+  border-color: rgba(249, 115, 22, 0.55);
+  box-shadow: var(--shadow-md);
+  transform: scale(1.05) rotate(-2deg);
 }
 
 .sahayak-brand-mark img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform var(--motion-med);
+}
+
+.sahayak-brand:hover .sahayak-brand-mark img {
+  transform: scale(1.04);
 }
 
 .sahayak-brand-name {
@@ -58,12 +80,19 @@
   border: none;
   padding: 8px;
   cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast);
+}
+
+.sahayak-nav-toggle:hover {
+  background: var(--paper-dim);
+  transform: translateY(-1px);
 }
 .sahayak-nav-toggle span {
   width: 22px;
   height: 2px;
   background: var(--ink-900);
   border-radius: 2px;
+  transition: transform var(--motion-fast), opacity var(--motion-fast);
 }
 
 .sahayak-nav-links {
@@ -73,6 +102,7 @@
 }
 
 .sahayak-nav-link {
+  position: relative;
   background: none;
   border: 0;
   font-weight: 500;
@@ -80,15 +110,34 @@
   font-size: 0.95rem;
   color: var(--ink-700);
   padding: 0.4rem 0;
-  border-bottom: 2px solid transparent;
   cursor: pointer;
   text-decoration: none;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color var(--motion-fast), transform var(--motion-fast);
+}
+
+.sahayak-nav-link::after {
+  background: linear-gradient(90deg, var(--marigold-600), var(--marigold-700));
+  border-radius: 999px;
+  bottom: 0;
+  content: "";
+  height: 2px;
+  left: 0;
+  position: absolute;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform var(--motion-med);
+  width: 100%;
 }
 .sahayak-nav-link:hover,
 .sahayak-nav-link.active {
   color: var(--teal-700);
-  border-bottom-color: var(--marigold-600);
+  transform: translateY(-1px);
+}
+
+.sahayak-nav-link:hover::after,
+.sahayak-nav-link.active::after {
+  transform: scaleX(1);
+  transform-origin: left;
 }
 
 .sahayak-nav-actions {
@@ -106,6 +155,12 @@
   font-weight: 600;
   color: var(--teal-700);
   margin-right: 0.25rem;
+  transition: color var(--motion-fast), transform var(--motion-fast);
+}
+
+.sahayak-nav-user:hover {
+  color: var(--teal-900);
+  transform: translateY(-1px);
 }
 
 @media (max-width: 900px) {
@@ -142,7 +197,7 @@
 
 /* ================= FOOTER ================= */
 .sahayak-footer {
-  background: var(--ink-900);
+  background: linear-gradient(135deg, #111827, #1f2937);
   color: var(--ink-300);
   margin-top: auto;
   padding: 3.5rem 0 1.5rem;
@@ -153,7 +208,7 @@
   grid-template-columns: 1.6fr 1fr 1fr 1fr 1.1fr;
   gap: 2rem;
   padding-bottom: 2.5rem;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.18);
 }
 
 .sahayak-footer-brand p.sahayak-footer-tag {
@@ -175,10 +230,11 @@
 .sahayak-footer-col a {
   color: var(--ink-300);
   font-size: 0.9rem;
-  transition: color 0.15s ease;
+  transition: color var(--motion-fast), transform var(--motion-fast);
 }
 .sahayak-footer-col a:hover {
   color: var(--marigold-600);
+  transform: translateX(3px);
 }
 
 .sahayak-footer-contact {

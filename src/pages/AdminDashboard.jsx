@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ToolIcon from "../components/ToolIcon";
+import DecorativeBackdrop from "../components/DecorativeBackdrop";
 import ProviderAvatar from "../components/ProviderAvatar";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -20,12 +21,12 @@ import { downloadInvoicePdf, getInvoices } from "../api/invoiceApi";
 import { getMaskedAadhaar, getProviderImageUrl } from "../utils/providerKyc";
 
 const TABS = [
-  { id: "users", label: "Users" },
-  { id: "bookings", label: "Bookings" },
-  { id: "reviews", label: "Reviews" },
-  { id: "payments", label: "Payments" },
-  { id: "invoices", label: "Invoices" },
-  { id: "pending-providers", label: "Pending Providers" },
+  { id: "users", label: "Users", icon: "users" },
+  { id: "bookings", label: "Bookings", icon: "calendar" },
+  { id: "reviews", label: "Reviews", icon: "star" },
+  { id: "payments", label: "Payments", icon: "wallet" },
+  { id: "invoices", label: "Invoices", icon: "check" },
+  { id: "pending-providers", label: "Pending Providers", icon: "wrench" },
 ];
 
 export default function AdminDashboard() {
@@ -154,7 +155,8 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page dashboard-page-admin">
+      <DecorativeBackdrop variant="admin" />
       <div className="container-sahayak">
         <div className="dashboard-header">
           <span className="eyebrow">Administration</span>
@@ -184,13 +186,13 @@ export default function AdminDashboard() {
         </div>
 
         <div className="dashboard-tabs">
-          {TABS.map(({ id, label }) => (
+          {TABS.map(({ id, label, icon }) => (
             <button
               key={id}
               className={`dashboard-tab ${activeTab === id ? "active" : ""}`}
               onClick={() => setActiveTab(id)}
             >
-              {label}
+              <ToolIcon name={icon} size={16} /> {label}
             </button>
           ))}
         </div>
@@ -232,6 +234,7 @@ function UsersTable({
   deletingUserId,
   onDeleteUser,
 }) {
+  if (users.length === 0) return <AdminEmptyState icon="users" title="No users yet" body="Registered Sahayak users will appear here." />;
   return (
     <Table headers={["User", "Email", "Phone", "Role", "KYC", "Status", "Joined", "Actions"]}>
       {users.map((user) => {
@@ -277,6 +280,7 @@ function UsersTable({
 }
 
 function BookingsTable({ bookings, userNames, providerNames }) {
+  if (bookings.length === 0) return <AdminEmptyState icon="calendar" title="No bookings yet" body="New service bookings will appear here." />;
   return (
     <Table headers={["Booking", "Customer", "Provider", "Scheduled", "Status", "Amount"]}>
       {bookings.map((booking) => (
@@ -294,6 +298,7 @@ function BookingsTable({ bookings, userNames, providerNames }) {
 }
 
 function ReviewsTable({ reviews, userNames, providerNames }) {
+  if (reviews.length === 0) return <AdminEmptyState icon="star" title="No reviews yet" body="Customer reviews will appear after completed services." />;
   return (
     <Table headers={["Review", "Customer", "Provider", "Rating", "Comment", "Created"]}>
       {reviews.map((review) => (
@@ -311,6 +316,7 @@ function ReviewsTable({ reviews, userNames, providerNames }) {
 }
 
 function PaymentsTable({ payments, userNames }) {
+  if (payments.length === 0) return <AdminEmptyState icon="wallet" title="No payments yet" body="Completed payment records will appear here." />;
   return (
     <Table headers={["Transaction", "Booking", "Customer", "Method", "Amount", "Status", "Created"]}>
       {payments.map((payment) => (
@@ -367,7 +373,9 @@ function InvoicesTable({ invoices }) {
           {downloadError}
         </div>
       )}
-      <Table
+      {invoices.length === 0 ? (
+        <AdminEmptyState icon="check" title="No invoices yet" body="Generated service invoices will appear here." />
+      ) : <Table
         headers={[
           "Invoice",
           "Booking",
@@ -408,7 +416,7 @@ function InvoicesTable({ invoices }) {
             </td>
           </tr>
         ))}
-      </Table>
+      </Table>}
     </section>
   );
 }
@@ -417,7 +425,9 @@ function PendingProvidersTable({ providers, providerAction, onDecision }) {
   if (providers.length === 0) {
     return (
       <div className="empty-state surface-card">
+        <ToolIcon name="check" size={36} />
         <h5>No pending provider approvals.</h5>
+        <p>New provider applications will appear here for review.</p>
       </div>
     );
   }
@@ -491,6 +501,16 @@ function Table({ headers, children }) {
         <thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
         <tbody>{children}</tbody>
       </table>
+    </div>
+  );
+}
+
+function AdminEmptyState({ icon, title, body }) {
+  return (
+    <div className="empty-state surface-card">
+      <ToolIcon name={icon} size={36} />
+      <h5>{title}</h5>
+      <p>{body}</p>
     </div>
   );
 }

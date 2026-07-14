@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
 import { useAuth } from "../context/AuthContext";
 import logo from "../sahayak_logo/Sahayak_logo.png";
+import DecorativeBackdrop, { ServiceJourney } from "../components/DecorativeBackdrop";
 import {
   hasValidationErrors,
   sanitizeMobileNumber,
@@ -64,7 +65,8 @@ export default function RegisterCustomerPage() {
 
   return (
     <div className="auth-page">
-      <aside className="auth-side">
+      <aside className="auth-side auth-side-register">
+        <DecorativeBackdrop variant="register" />
         <div>
           <div className="auth-side-visual">
             <span className="auth-side-logo">
@@ -76,6 +78,7 @@ export default function RegisterCustomerPage() {
               <p>Create your account and connect with verified local service providers.</p>
             </div>
           </div>
+          <ServiceJourney />
           <div className="auth-side-points">
             <div className="auth-side-point">
               <ToolIcon name="shield" size={18} />

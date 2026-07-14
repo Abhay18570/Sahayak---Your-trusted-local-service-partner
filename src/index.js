@@ -7,6 +7,7 @@ import "./styles/layout.css";
 import "./styles/landing.css";
 import "./styles/auth.css";
 import "./styles/dashboard.css";
+import "./styles/premium.css";
 import "./styles/responsive.css";
 import App from "./App";
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
+import DecorativeBackdrop from "../components/DecorativeBackdrop";
 import { forgotPassword, resetPassword } from "../api/authApi";
 import { validateEmail } from "../utils/formValidation";
 
@@ -109,7 +110,8 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="auth-page">
-      <aside className="auth-side">
+      <aside className="auth-side auth-side-login">
+        <DecorativeBackdrop variant="login" />
         <div>
           <span className="eyebrow on-dark">Account recovery</span>
           <h2>A quick verification, then you are back in.</h2>

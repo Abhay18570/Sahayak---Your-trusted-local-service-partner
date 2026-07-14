@@ -54,6 +54,66 @@ export function ToolIcon({ name, size = 28, className = "" }) {
           <path d="M31 9a9 9 0 0 0-12.5 10.8L6 32.3 11.7 38l12.5-12.5A9 9 0 0 0 35 13l-6 6-4-4 6-6Z" />
         </svg>
       );
+    case "home":
+      return (
+        <svg {...common}>
+          <path d="M5 23 24 7l19 16" />
+          <path d="M10 20v22h28V20M19 42V28h10v14" />
+        </svg>
+      );
+    case "hammer":
+      return (
+        <svg {...common}>
+          <path d="m18 17 18 18M13 42l-7-7 18-18 7 7Z" />
+          <path d="m20 7 7-3 12 12-8 8Z" />
+        </svg>
+      );
+    case "paint":
+      return (
+        <svg {...common}>
+          <rect x="7" y="8" width="27" height="11" rx="2" />
+          <path d="M34 13h6v13H24v6M24 32v11" />
+        </svg>
+      );
+    case "wallet":
+      return (
+        <svg {...common}>
+          <path d="M7 12h31a4 4 0 0 1 4 4v23H9a4 4 0 0 1-4-4V11a4 4 0 0 1 4-4h25" />
+          <path d="M30 23h12v10H30a5 5 0 0 1 0-10Z" />
+        </svg>
+      );
+    case "coins":
+      return (
+        <svg {...common}>
+          <ellipse cx="18" cy="13" rx="11" ry="5" />
+          <path d="M7 13v9c0 3 5 5 11 5s11-2 11-5v-9M7 22v9c0 3 5 5 11 5 2 0 4-.2 5.5-.7" />
+          <path d="M29 25c7 0 12 2 12 5s-5 5-12 5-12-2-12-5" />
+          <path d="M17 30v7c0 3 5 5 12 5s12-2 12-5v-7" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg {...common}>
+          <circle cx="24" cy="24" r="7" />
+          <path d="M24 5v5M24 38v5M5 24h5M38 24h5M10.5 10.5l3.6 3.6M33.9 33.9l3.6 3.6M37.5 10.5l-3.6 3.6M14.1 33.9l-3.6 3.6" />
+        </svg>
+      );
+    case "chart":
+    case "analytics":
+      return (
+        <svg {...common}>
+          <path d="M7 41V8M7 41h35" />
+          <path d="m13 33 8-9 7 5 11-15" />
+          <circle cx="13" cy="33" r="2" /><circle cx="21" cy="24" r="2" /><circle cx="28" cy="29" r="2" /><circle cx="39" cy="14" r="2" />
+        </svg>
+      );
+    case "users":
+      return (
+        <svg {...common}>
+          <circle cx="18" cy="17" r="7" /><circle cx="34" cy="19" r="5" />
+          <path d="M5 41c1-9 6-14 13-14s12 5 13 14M29 29c7 0 11 4 12 11" />
+        </svg>
+      );
     case "spark": // Cleaner
       return (
         <svg {...common}>

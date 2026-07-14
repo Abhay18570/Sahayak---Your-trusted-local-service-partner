@@ -1,6 +1,10 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
+import DecorativeBackdrop from "../components/DecorativeBackdrop";
+import ServiceCarousel from "../components/ServiceCarousel";
+import FaqSection from "../components/FaqSection";
+import AnimatedLogo from "../components/AnimatedLogo";
 import { useAuth } from "../context/AuthContext";
 import { dashboardPathForRole } from "../utils/roles";
 
@@ -65,11 +69,13 @@ export default function LandingPage() {
     <>
       {/* ================= HERO ================= */}
       <section className="hero">
+        <DecorativeBackdrop variant="hero" />
         <div className="container-sahayak hero-grid">
           <div className="hero-content">
             <span className="hero-eyebrow">
               <ToolIcon name="shield" size={14} /> 12,000+ verified local pros
             </span>
+            <AnimatedLogo />
             <h1>
               Your trusted <span className="accent">local service</span>{" "}
               partner
@@ -110,10 +116,13 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+        <div className="section-wave" aria-hidden="true" />
       </section>
 
+      <ServiceCarousel />
+
       {/* ================= HOW IT WORKS ================= */}
-      <section className="section-pad" id="how-it-works">
+      <section className="section-pad marketplace-section" id="how-it-works">
         <div className="container-sahayak">
           <div className="section-head">
             <div>
@@ -139,7 +148,7 @@ export default function LandingPage() {
       </section>
 
       {/* ================= TESTIMONIALS ================= */}
-      <section className="testimonials-section section-pad">
+      <section className="testimonials-section section-pad section-divider-wave">
         <div className="container-sahayak">
           <div className="section-head">
             <div>
@@ -172,6 +181,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <FaqSection />
 
       {/* ================= CTA ================= */}
       <section className="section-pad" style={{ paddingTop: 0 }}>

@@ -4,12 +4,14 @@ import ToolIcon from "./ToolIcon";
 import { useAuth } from "../context/AuthContext";
 import { hasRole, ROLES } from "../utils/roles";
 import sahayakLogo from "../sahayak_logo/Sahayak_logo.png";
+import DecorativeBackdrop from "./DecorativeBackdrop";
 
 export default function Footer() {
   const { user } = useAuth();
 
   return (
     <footer className="sahayak-footer">
+      <DecorativeBackdrop variant="footer" />
       <div className="container-sahayak sahayak-footer-grid">
         <div className="sahayak-footer-brand">
           <Link to="/" className="sahayak-brand">

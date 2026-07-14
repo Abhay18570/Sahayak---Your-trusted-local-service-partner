@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
+import DecorativeBackdrop from "../components/DecorativeBackdrop";
 import ProviderAvatar from "../components/ProviderAvatar";
 import { useAuth } from "../context/AuthContext";
 import { getCategories } from "../api/categoryApi";
@@ -430,7 +431,8 @@ export default function CustomerDashboard() {
   };
 
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page dashboard-page-customer">
+      <DecorativeBackdrop variant="customer" />
       <div className="container-sahayak">
         <div className="dashboard-header">
           <h1>Find your next service</h1>

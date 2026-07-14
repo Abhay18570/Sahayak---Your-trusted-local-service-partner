@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ToolIcon from "../components/ToolIcon";
+import DecorativeBackdrop from "../components/DecorativeBackdrop";
 import ProviderAvatar from "../components/ProviderAvatar";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -250,7 +251,8 @@ export default function ProviderDashboard() {
   };
 
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page dashboard-page-provider">
+      <DecorativeBackdrop variant="provider" />
       <div className="container-sahayak">
         <div className="dashboard-header">
           <h1>Welcome{user?.name ? `, ${user.name}` : ""}</h1>

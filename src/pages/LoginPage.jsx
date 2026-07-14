@@ -7,6 +7,7 @@ import { googleCustomerLogin } from "../api/authApi";
 import { dashboardPathForRole } from "../utils/roles";
 import { validateEmail } from "../utils/formValidation";
 import logo from "../sahayak_logo/Sahayak_logo.png";
+import DecorativeBackdrop from "../components/DecorativeBackdrop";
 
 export default function LoginPage() {
   const [role, setRole] = useState("customer");
@@ -88,7 +89,8 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <aside className="auth-side">
+      <aside className="auth-side auth-side-login">
+        <DecorativeBackdrop variant="login" />
         <div>
           <div className="auth-side-visual">
             <span className="auth-side-logo">

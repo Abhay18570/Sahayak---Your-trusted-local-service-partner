@@ -29,6 +29,9 @@ import {
 } from "../api/providerWalletApi";
 import { getMaskedAadhaar } from "../utils/providerKyc";
 
+const COMPLETION_IMAGE_MAX_BYTES = 850 * 1024;
+const COMPLETION_IMAGE_MAX_DIMENSION = 1600;
+
 export default function ProviderDashboard() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
@@ -158,7 +161,12 @@ export default function ProviderDashboard() {
       setBankDetails(response?.data || response || null);
     } catch (err) {
       setBankDetails(null);
-      if (!err.status || err.status !== 404) {
+      const isMissingOrInternalServerError =
+        err.status === 404 ||
+        err.status === 500 ||
+        String(err.message || "").trim().toLowerCase() === "internal server error";
+
+      if (!isMissingOrInternalServerError) {
         setBankDetailsError(err.message || "Unable to load your bank details.");
       }
     } finally {
@@ -1004,7 +1012,8 @@ function BookingRequestCard({ booking, customerName, updating, onStatusChange })
     setProofError("");
     setProofMessage("");
     try {
-      const uploadResponse = await uploadProviderImage(selectedFile);
+      const uploadFile = await prepareCompletionImage(selectedFile);
+      const uploadResponse = await uploadProviderImage(uploadFile);
       const imageUrl =
         uploadResponse?.imageUrl ??
         uploadResponse?.data?.imageUrl ??
@@ -1018,7 +1027,11 @@ function BookingRequestCard({ booking, customerName, updating, onStatusChange })
       setPreviewUrl("");
       setProofMessage("Completion image uploaded successfully.");
     } catch (err) {
-      setProofError(err.message || "Unable to upload completion image.");
+      setProofError(
+        err.status === 413
+          ? "The image is too large to upload. Please choose a smaller image."
+          : err.message || "Unable to upload completion image."
+      );
     } finally {
       setUploading(false);
     }
@@ -1183,6 +1196,78 @@ function normalizeCompletionImages(response) {
         : image?.imageUrl ?? image?.url ?? image?.completionImageUrl
     )
     .filter(Boolean);
+}
+
+async function prepareCompletionImage(file) {
+  if (file.size <= COMPLETION_IMAGE_MAX_BYTES) return file;
+
+  const image = await loadImageFile(file);
+  const scale = Math.min(
+    1,
+    COMPLETION_IMAGE_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight)
+  );
+  let width = Math.max(1, Math.round(image.naturalWidth * scale));
+  let height = Math.max(1, Math.round(image.naturalHeight * scale));
+  let quality = 0.86;
+  let blob = null;
+
+  for (let attempt = 0; attempt < 7; attempt += 1) {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Unable to prepare this image for upload.");
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    blob = await canvasToBlob(canvas, "image/jpeg", quality);
+
+    if (blob.size <= COMPLETION_IMAGE_MAX_BYTES) break;
+
+    const reduction = Math.min(0.88, Math.sqrt(COMPLETION_IMAGE_MAX_BYTES / blob.size) * 0.94);
+    width = Math.max(1, Math.round(width * reduction));
+    height = Math.max(1, Math.round(height * reduction));
+    quality = Math.max(0.58, quality - 0.06);
+  }
+
+  if (!blob || blob.size > COMPLETION_IMAGE_MAX_BYTES) {
+    throw new Error("The image is too large to upload. Please choose a smaller image.");
+  }
+
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "completion-proof";
+  return new File([blob], `${baseName}.jpg`, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
+
+function loadImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Unable to read this image. Please choose another image."));
+    };
+    image.src = objectUrl;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error("Unable to prepare this image for upload.")),
+      type,
+      quality
+    );
+  });
 }
 
 function formatDateTime(value) {

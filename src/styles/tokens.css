@@ -17,6 +17,8 @@
 
   --paper: #ffffff;
   --paper-dim: #fff7ed;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
   --ink-900: #1f2937;
   --ink-700: #374151;
   --ink-500: #6b7280;
@@ -58,6 +60,7 @@ html, body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   scroll-behavior: smooth;
+  transition: background-color var(--motion-med), color var(--motion-med);
 }
 
 #root {
@@ -222,7 +225,7 @@ textarea:focus-visible,
 
 /* ---------- Shared surfaces ---------- */
 .surface-card {
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);

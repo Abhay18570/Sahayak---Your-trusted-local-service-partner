@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Moon, Sun } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import ToolIcon from "./ToolIcon";
 import { dashboardPathForRole, normalizeRole, ROLES } from "../utils/roles";
 import sahayakLogo from "../sahayak_logo/Sahayak_logo.png";
@@ -8,6 +10,7 @@ import sahayakLogo from "../sahayak_logo/Sahayak_logo.png";
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const userRole = normalizeRole(user?.role);
   const dashboardPath = dashboardPathForRole(userRole) || "/";
@@ -39,17 +42,6 @@ export default function Navbar() {
           </span>
           <span className="sahayak-brand-name">Sahayak</span>
         </Link>
-
-        <button
-          className="sahayak-nav-toggle"
-          aria-label="Toggle navigation"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
 
         <nav className={`sahayak-nav-links ${open ? "is-open" : ""}`}>
           {!user && (
@@ -104,6 +96,34 @@ export default function Navbar() {
             )}
           </div>
         </nav>
+
+        <div className="sahayak-nav-utilities">
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
+            aria-pressed={isDark}
+            title={`Switch to ${isDark ? "light" : "dark"} theme`}
+          >
+            <span className="theme-toggle-track" aria-hidden="true">
+              <span className="theme-toggle-thumb">
+                {isDark ? <Moon size={15} /> : <Sun size={15} />}
+              </span>
+            </span>
+          </button>
+
+          <button
+            className="sahayak-nav-toggle"
+            aria-label="Toggle navigation"
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
       </div>
     </header>
   );

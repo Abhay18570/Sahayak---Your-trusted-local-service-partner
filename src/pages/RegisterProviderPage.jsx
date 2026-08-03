@@ -354,19 +354,14 @@ export default function RegisterProviderPage() {
           <p className="auth-sub">Already on Sahayak? <Link to="/login">Log in instead</Link>.</p>
 
           {error && (
-            <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
+            <div className="auth-alert auth-alert-error">
               <ToolIcon name="shield" size={15} /> {error}
             </div>
           )}
 
           {notice && (
             <div
-              className="auth-alert"
-              style={
-                notice.type === "warning"
-                  ? { background: "#fff3d6", color: "#76510b" }
-                  : { background: "#e3f3e8", color: "#25613c" }
-              }
+              className={`auth-alert auth-alert-${notice.type === "warning" ? "warning" : "success"}`}
             >
               <ToolIcon name={notice.type === "warning" ? "calendar" : "check"} size={15} />
               {notice.text}

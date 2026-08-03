@@ -1,7 +1,7 @@
 /* ================= HERO ================= */
 .hero {
   position: relative;
-  background: var(--white);
+  background: var(--surface);
   background-image:
     radial-gradient(circle at 16% 8%, rgba(249, 115, 22, 0.16), transparent 32%),
     radial-gradient(circle at 86% 18%, rgba(254, 215, 170, 0.55), transparent 34%),
@@ -243,7 +243,7 @@
 
 /* ---- search "job card" mockup ---- */
 .hero-search-card {
-  background: var(--white);
+  background: var(--surface-raised);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   padding: 1.6rem;
@@ -298,7 +298,7 @@
 }
 
 .hero-search-field:focus-within {
-  background: var(--white);
+  background: var(--surface-raised);
   border-color: var(--teal-600);
   box-shadow: var(--focus-ring);
 }
@@ -403,7 +403,7 @@
   background:
     radial-gradient(circle at 8% 22%, rgba(249, 115, 22, 0.08), transparent 24%),
     radial-gradient(circle at 92% 78%, rgba(254, 215, 170, 0.28), transparent 26%),
-    var(--white);
+    var(--surface);
   overflow: hidden;
   position: relative;
 }
@@ -749,7 +749,7 @@
 }
 
 .faq-card {
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid rgba(229, 231, 235, 0.95);
   border-radius: 20px;
   box-shadow: 0 8px 26px rgba(154, 52, 18, 0.07);
@@ -1008,7 +1008,7 @@
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  background: var(--white);
+  background: var(--surface-raised);
   border: 1.5px solid var(--line);
   color: var(--teal-700);
   box-shadow: var(--shadow-sm);
@@ -1050,7 +1050,7 @@
 
 /* ================= FEATURED PROVIDERS ================= */
 .providers-section {
-  background: linear-gradient(180deg, var(--paper-dim), var(--white));
+  background: linear-gradient(180deg, var(--paper-dim), var(--surface));
 }
 
 .provider-grid {
@@ -1060,7 +1060,7 @@
 }
 
 .provider-card {
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 1.4rem;
@@ -1198,7 +1198,7 @@
 }
 
 .how-step {
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 1.6rem 1.4rem;

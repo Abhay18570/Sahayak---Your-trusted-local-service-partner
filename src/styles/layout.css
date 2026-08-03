@@ -41,7 +41,7 @@
   width: 42px;
   height: 42px;
   border-radius: 10px;
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);
   overflow: hidden;

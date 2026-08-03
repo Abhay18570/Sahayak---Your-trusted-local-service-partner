@@ -303,7 +303,7 @@ export default function ProviderDashboard() {
         />
 
         {error && (
-          <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
+          <div className="auth-alert auth-alert-error">
             {error}
           </div>
         )}
@@ -424,12 +424,12 @@ function ServiceAreasSection({
       </div>
 
       {error && (
-        <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
+        <div className="auth-alert auth-alert-error">
           {error}
         </div>
       )}
       {message && (
-        <div className="auth-alert" style={{ background: "#e3f3e8", color: "#25613c" }}>
+        <div className="auth-alert auth-alert-success">
           {message}
         </div>
       )}
@@ -544,9 +544,8 @@ function EarningsSummary({ earnings, loading, error }) {
 
       {error && (
         <div
-          className="auth-alert"
+          className="auth-alert auth-alert-error"
           role="alert"
-          style={{ background: "#fbe7e3", color: "#7a2f24" }}
         >
           {error}
         </div>
@@ -710,9 +709,8 @@ function WalletSummary({
 
       {error && (
         <div
-          className="auth-alert"
+          className="auth-alert auth-alert-error"
           role="alert"
-          style={{ background: "#fbe7e3", color: "#7a2f24" }}
         >
           {error}
         </div>

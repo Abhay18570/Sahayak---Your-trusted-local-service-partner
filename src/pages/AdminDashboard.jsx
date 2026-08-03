@@ -165,12 +165,12 @@ export default function AdminDashboard() {
         </div>
 
         {error && (
-          <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
+          <div className="auth-alert auth-alert-error">
             {error}
           </div>
         )}
         {message && (
-          <div className="auth-alert" style={{ background: "#e3f3e8", color: "#25613c" }}>
+          <div className="auth-alert auth-alert-success">
             <ToolIcon name="check" size={15} />
             {message}
           </div>
@@ -369,7 +369,7 @@ function InvoicesTable({ invoices }) {
         </div>
       </div>
       {downloadError && (
-        <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
+        <div className="auth-alert auth-alert-error">
           {downloadError}
         </div>
       )}

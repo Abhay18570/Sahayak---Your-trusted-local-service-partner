@@ -168,7 +168,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="auth-alert" style={{ background: "#fbe7e3", color: "#7a2f24" }}>
+            <div className="auth-alert auth-alert-error">
               <ToolIcon name="shield" size={15} /> {error}
             </div>
           )}

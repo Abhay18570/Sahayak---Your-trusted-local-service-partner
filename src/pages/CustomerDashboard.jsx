@@ -453,11 +453,9 @@ export default function CustomerDashboard() {
 
         {notice && (
           <div
-            className="auth-alert"
+            className={`auth-alert ${notice.type === "error" ? "auth-alert-error" : "auth-alert-success"}`}
             style={{
               marginBottom: "1rem",
-              background: notice.type === "error" ? "#fbe7e3" : "var(--teal-100)",
-              color: notice.type === "error" ? "#7a2f24" : "var(--teal-700)",
             }}
           >
             {notice.text}
@@ -491,8 +489,7 @@ export default function CustomerDashboard() {
           <>
             {!city.trim() && (
               <div
-                className="auth-alert"
-                style={{ background: "#fff3d6", color: "#76510b" }}
+                className="auth-alert auth-alert-warning"
               >
                 <ToolIcon name="pin" size={15} />
                 Please add your city in profile to see nearby providers.
@@ -1051,11 +1048,7 @@ function CustomerProfile({ userId }) {
 function ProfileMessage({ message }) {
   return (
     <div
-      className="auth-alert"
-      style={{
-        background: message.type === "error" ? "#fbe7e3" : "#e3f3e8",
-        color: message.type === "error" ? "#7a2f24" : "#25613c",
-      }}
+      className={`auth-alert ${message.type === "error" ? "auth-alert-error" : "auth-alert-success"}`}
     >
       <ToolIcon name={message.type === "error" ? "shield" : "check"} size={15} />
       {message.text}
@@ -1254,9 +1247,8 @@ function BookingConfirmationModal({
 
         {error && (
           <div
-            className="auth-alert"
+            className="auth-alert auth-alert-error"
             role="alert"
-            style={{ background: "#fbe7e3", color: "#7a2f24" }}
           >
             <ToolIcon name="shield" size={15} />
             {error}

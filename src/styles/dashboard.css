@@ -73,7 +73,7 @@
 }
 
 .dashboard-search-bar {
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 1rem;
@@ -100,7 +100,7 @@
 }
 
 .filter-panel {
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 1.4rem;
@@ -226,7 +226,7 @@
   border-radius: var(--radius-sm);
   padding: 0.45rem 0.7rem;
   font-size: 0.85rem;
-  background: var(--white);
+  background: var(--surface);
   transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
@@ -243,7 +243,7 @@
 }
 
 .dashboard-provider-card {
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 1.3rem;
@@ -421,7 +421,7 @@
 
 /* ---------- Booking history table ---------- */
 .booking-table-wrap {
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -504,7 +504,7 @@
 }
 
 .admin-metric-card {
-  background: var(--white);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 1.25rem;
@@ -608,7 +608,7 @@
   min-width: 0;
   background:
     linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(255, 255, 255, 0.92)),
-    var(--white);
+    var(--surface);
 }
 
 .provider-wallet-card strong {
@@ -986,7 +986,7 @@
   align-items: center;
   background:
     linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(255, 255, 255, 0.92)),
-    var(--white);
+    var(--surface);
   display: flex;
   gap: 0.9rem;
   padding: 1.1rem;
@@ -1034,7 +1034,7 @@
   width: min(100%, 560px);
   max-height: calc(100vh - 2.5rem);
   overflow-y: auto;
-  background: var(--white);
+  background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
